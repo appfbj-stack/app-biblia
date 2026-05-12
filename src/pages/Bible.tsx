@@ -1,17 +1,31 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "../database/db";
 import { useAudio } from "../contexts/AudioContext";
-import { Play, ChevronDown, CheckCircle2, Circle } from "lucide-react";
+import { Play, ChevronDown, CheckCircle2, Circle, StickyNote, X, Save } from "lucide-react";
 import { cn } from "../lib/utils";
 
 export default function Bible() {
-  const [currentBook, setCurrentBook] = useState('Gênesis');
-  const [currentChapter, setCurrentChapter] = useState(1);
+  const location = useLocation();
+  const [currentBook, setCurrentBook] = useState(location.state?.book || 'Gênesis');
+  const [currentChapter, setCurrentChapter] = useState(location.state?.chapter || 1);
   const [currentBookMaxChapters, setCurrentBookMaxChapters] = useState(50);
+  
+  const [editingNoteVerse, setEditingNoteVerse] = useState<number | null>(null);
+  const [noteContent, setNoteContent] = useState('');
   
   const books = useLiveQuery(() => db.books.toArray(), []);
   const audio = useAudio();
+
+  useEffect(() => {
+    if (books && books.length > 0) {
+      const foundBook = books.find(b => b.name === currentBook);
+      if (foundBook) {
+        setCurrentBookMaxChapters(foundBook.chapters);
+      }
+    }
+  }, [books, currentBook]);
 
   const verses = useLiveQuery(
     () => db.verses.where({ book_name: currentBook, chapter: currentChapter }).toArray(),
@@ -27,6 +41,11 @@ export default function Bible() {
     () => db.read_chapters.where({ book_name: currentBook, chapter: currentChapter }).first(),
     [currentBook, currentChapter]
   );
+
+  const chapterNotes = useLiveQuery(
+    () => db.notes.where('[book_name+chapter]').equals([currentBook, currentChapter]).toArray(),
+    [currentBook, currentChapter]
+  ) || [];
 
   const totalChapters = books?.reduce((acc, book) => acc + book.chapters, 0) || 1189;
   const readChaptersCount = useLiveQuery(() => db.read_chapters.count(), []) || 0;
@@ -74,6 +93,35 @@ export default function Bible() {
         await db.read_chapters.add({ book_name: currentBook, chapter: currentChapter });
       }
     }
+  };
+
+  const openNote = (verse: number) => {
+    const note = chapterNotes.find(n => n.verse === verse);
+    setNoteContent(note?.content || '');
+    setEditingNoteVerse(verse);
+  };
+
+  const saveNote = async () => {
+    if (!editingNoteVerse) return;
+    const note = chapterNotes.find(n => n.verse === editingNoteVerse);
+    if (!noteContent.trim()) {
+      if (note && note.id) await db.notes.delete(note.id);
+    } else {
+      if (note && note.id) {
+        await db.notes.update(note.id, { content: noteContent.trim(), updated_at: new Date().toISOString() });
+      } else {
+        await db.notes.add({
+          book_name: currentBook,
+          chapter: currentChapter,
+          verse: editingNoteVerse,
+          content: noteContent.trim(),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        });
+      }
+    }
+    setEditingNoteVerse(null);
+    setNoteContent('');
   };
 
   return (
@@ -158,25 +206,44 @@ export default function Bible() {
         {verses ? verses.map((verse) => {
           const isActive = audio.currentBook === currentBook && audio.currentChapter === currentChapter && audio.currentVerse === verse.verse;
           const isRead = readVerses.some(v => v.verse === verse.verse);
+          const hasNote = chapterNotes.some(n => n.verse === verse.verse);
           
           return (
-            <p 
+            <div 
               key={verse.id} 
-              onClick={() => toggleVerseRead(verse.verse)}
               className={cn(
-                "group relative transition-all duration-300 cursor-pointer p-2 -mx-2 rounded-lg",
+                "group relative transition-all duration-300 p-2 -mx-2 rounded-lg flex gap-2 items-start",
                 isActive ? "bg-[#C5A059]/10 text-white" : "hover:bg-white/5",
                 isRead && !isActive ? "text-[#94A3B8]" : ""
               )}
             >
-              <sup className={cn(
-                "text-xs font-sans mr-2 align-super",
-                isActive || isRead ? "text-[#C5A059]" : "text-[#94A3B8]"
-              )}>
-                {verse.verse}
-              </sup>
-              <span>{verse.text}</span>
-            </p>
+              <div 
+                className="flex-1 cursor-pointer"
+                onClick={() => toggleVerseRead(verse.verse)}
+              >
+                <sup className={cn(
+                  "text-xs font-sans mr-2 align-super",
+                  isActive || isRead ? "text-[#C5A059]" : "text-[#94A3B8]"
+                )}>
+                  {verse.verse}
+                </sup>
+                <span>{verse.text}</span>
+              </div>
+              
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openNote(verse.verse);
+                }}
+                className={cn(
+                  "p-2 rounded-full transition-all shrink-0 mt-1",
+                  hasNote ? "text-[#C5A059] bg-[#C5A059]/10 opacity-100" : "text-[#94A3B8] opacity-0 group-hover:opacity-100 hover:bg-white/10"
+                )}
+                title={hasNote ? "Editar Anotação" : "Adicionar Anotação"}
+              >
+                <StickyNote className="w-4 h-4" />
+              </button>
+            </div>
           )
         }) : (
           <p className="text-center text-[#94A3B8]">Carregando as escrituras...</p>
@@ -203,6 +270,50 @@ export default function Bible() {
           Próximo Capítulo &rarr;
         </button>
       </div>
+
+      {/* Note Editor Overlay */}
+      {editingNoteVerse !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-[#1C2026] border border-white/10 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between p-4 border-b border-white/5 bg-[#08090B]">
+              <h3 className="font-serif font-semibold text-[#E2E8F0] flex items-center gap-2">
+                <StickyNote className="w-4 h-4 text-[#C5A059]" />
+                Anotação: {currentBook} {currentChapter}:{editingNoteVerse}
+              </h3>
+              <button 
+                onClick={() => setEditingNoteVerse(null)}
+                className="text-[#94A3B8] hover:text-white transition-colors p-1"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-4 flex-1">
+              <textarea
+                value={noteContent}
+                onChange={(e) => setNoteContent(e.target.value)}
+                placeholder="Escreva suas reflexões sobre este versículo..."
+                className="w-full h-48 bg-transparent text-[#E2E8F0] px-0 py-2 border-none focus:outline-none focus:ring-0 resize-none font-sans"
+                autoFocus
+              />
+            </div>
+            <div className="p-4 border-t border-white/5 flex justify-end gap-3 bg-[#08090B]/50">
+              <button 
+                onClick={() => setEditingNoteVerse(null)}
+                className="px-4 py-2 rounded-full text-sm font-medium text-[#94A3B8] hover:text-white transition-colors"
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={saveNote}
+                className="flex items-center gap-2 px-6 py-2 rounded-full text-sm font-medium bg-[#C5A059] text-white hover:bg-[#D4AF68] transition-colors"
+              >
+                <Save className="w-4 h-4" />
+                Salvar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

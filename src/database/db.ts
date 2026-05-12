@@ -17,8 +17,11 @@ export interface BibleVerse {
 
 export interface Note {
   id?: number;
-  title: string;
+  title?: string;
   content: string;
+  book_name?: string;
+  chapter?: number;
+  verse?: number;
   created_at: string;
   updated_at: string;
 }
@@ -73,6 +76,18 @@ db.version(1).stores({
 db.version(2).stores({
   read_chapters: '++id, [book_name+chapter]',
   read_verses: '++id, [book_name+chapter], [book_name+chapter+verse]'
+});
+
+db.version(3).stores({
+  notes: '++id, title, created_at, [book_name+chapter+verse]'
+});
+
+db.version(4).stores({
+  notes: '++id, title, created_at, [book_name+chapter], [book_name+chapter+verse]'
+});
+
+db.version(5).stores({
+  notes: '++id, title, created_at, updated_at, [book_name+chapter], [book_name+chapter+verse]'
 });
 
 export { db };

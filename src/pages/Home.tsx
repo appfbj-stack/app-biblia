@@ -1,9 +1,10 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "../database/db";
-import { BookOpen, Sparkles, MessageSquare } from "lucide-react";
-import { Link } from "react-router-dom";
+import { BookOpen, Sparkles, MessageSquare, StickyNote, ChevronRight } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 
 export default function Home() {
+  const navigate = useNavigate();
   const booksCount = useLiveQuery(() => db.books.count(), []);
   
   const totalChapters = useLiveQuery(async () => {
@@ -13,6 +14,8 @@ export default function Home() {
   
   const readChaptersCount = useLiveQuery(() => db.read_chapters.count(), []) || 0;
   const progressPercent = Math.round((readChaptersCount / totalChapters) * 100);
+
+  const recentNotes = useLiveQuery(() => db.notes.orderBy('updated_at').reverse().limit(3).toArray(), []) || [];
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 p-4 md:p-8">
@@ -63,6 +66,39 @@ export default function Home() {
         </Link>
       </div>
       
+      {recentNotes.length > 0 && (
+        <section className="bg-[#1C2026] rounded-2xl p-6 md:p-8 border border-white/5 space-y-4">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-serif font-semibold text-[#E2E8F0] flex items-center gap-2">
+              <StickyNote className="w-5 h-5 text-[#C5A059]" />
+              Minhas Anotações Recentes
+            </h3>
+          </div>
+          <div className="grid gap-3">
+            {recentNotes.map(note => (
+              <div 
+                key={note.id} 
+                className="bg-[#08090B] p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors flex flex-col cursor-pointer group"
+                onClick={() => {
+                  if (note.book_name) {
+                    navigate('/bible', { state: { book: note.book_name, chapter: note.chapter }});
+                  }
+                }}
+              >
+                <div className="flex justify-between items-start mb-2">
+                  <span className="text-sm font-semibold text-[#C5A059] uppercase tracking-wider group-hover:text-[#D4AF68] transition-colors flex items-center gap-1">
+                    {note.book_name} {note.chapter}:{note.verse}
+                    <ChevronRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-all -ml-2 group-hover:ml-0" />
+                  </span>
+                  <span className="text-xs text-[#94A3B8]">{new Date(note.updated_at).toLocaleDateString()}</span>
+                </div>
+                <p className="text-[#E2E8F0] line-clamp-2 text-sm">{note.content}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       <div className="pt-8 text-center text-sm text-[#94A3B8]">
         Status do banco local: {booksCount !== undefined ? `${booksCount} livros carregados.` : 'Carregando...'}
       </div>

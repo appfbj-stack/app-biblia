@@ -28,3 +28,5 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
+
+.error-overlay {position: fixed; inset: 0; z-index: 9999; background: red; color: white;}
