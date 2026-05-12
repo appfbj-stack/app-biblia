@@ -6,6 +6,14 @@ import { Link } from "react-router-dom";
 export default function Home() {
   const booksCount = useLiveQuery(() => db.books.count(), []);
   
+  const totalChapters = useLiveQuery(async () => {
+    const books = await db.books.toArray();
+    return books.reduce((acc, book) => acc + book.chapters, 0);
+  }, []) || 1189;
+  
+  const readChaptersCount = useLiveQuery(() => db.read_chapters.count(), []) || 0;
+  const progressPercent = Math.round((readChaptersCount / totalChapters) * 100);
+
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 p-4 md:p-8">
       <header className="space-y-2">
@@ -30,13 +38,25 @@ export default function Home() {
       </section>
 
       <div className="grid md:grid-cols-2 gap-4">
-        <Link to="/bible" className="group bg-[#1C2026] p-6 rounded-2xl border border-white/5 hover:bg-white/5 transition-all">
-          <BookOpen className="w-8 h-8 text-[#94A3B8] group-hover:text-[#C5A059] transition-colors mb-4" />
+        <Link to="/bible" className="group bg-[#1C2026] p-6 rounded-2xl border border-white/5 hover:bg-white/5 transition-all text-left block">
+          <div className="flex justify-between items-start mb-4">
+            <BookOpen className="w-8 h-8 text-[#94A3B8] group-hover:text-[#C5A059] transition-colors" />
+            <div className="text-right">
+              <span className="text-[#C5A059] font-bold">{progressPercent}%</span>
+              <span className="text-xs text-[#94A3B8] block">lido</span>
+            </div>
+          </div>
           <h4 className="font-semibold text-lg text-[#E2E8F0]">Continuar Leitura</h4>
-          <p className="text-[#94A3B8] text-sm mt-1">Você está em Gênesis, Capítulo 1.</p>
+          <p className="text-[#94A3B8] text-sm mt-1 mb-4">Acessar as escrituras livremente.</p>
+          <div className="w-full h-1.5 bg-[#0F1115] rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-[#C5A059] rounded-full transition-all duration-500" 
+              style={{ width: `${Math.min(100, Math.max(0, progressPercent))}%` }}
+            />
+          </div>
         </Link>
         
-        <Link to="/chat" className="group bg-[#1C2026] p-6 rounded-2xl border border-white/5 hover:bg-white/5 transition-all">
+        <Link to="/chat" className="group bg-[#1C2026] p-6 rounded-2xl border border-white/5 hover:bg-white/5 transition-all block">
           <MessageSquare className="w-8 h-8 text-[#94A3B8] group-hover:text-[#C5A059] transition-colors mb-4" />
           <h4 className="font-semibold text-lg text-[#E2E8F0]">Falar com Hermes</h4>
           <p className="text-[#94A3B8] text-sm mt-1">Tire dúvidas ou crie esboços com IA.</p>

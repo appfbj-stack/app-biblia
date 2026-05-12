@@ -37,6 +37,19 @@ export interface ChatMessage {
   created_at: string;
 }
 
+export interface ReadChapter {
+  id?: number;
+  book_name: string;
+  chapter: number;
+}
+
+export interface ReadVerse {
+  id?: number;
+  book_name: string;
+  chapter: number;
+  verse: number;
+}
+
 // Database declaration
 const db = new Dexie('HermesBible') as Dexie & {
   books: EntityTable<BibleBook, 'id'>;
@@ -44,6 +57,8 @@ const db = new Dexie('HermesBible') as Dexie & {
   notes: EntityTable<Note, 'id'>;
   chats: EntityTable<Chat, 'id'>;
   chat_messages: EntityTable<ChatMessage, 'id'>;
+  read_chapters: EntityTable<ReadChapter, 'id'>;
+  read_verses: EntityTable<ReadVerse, 'id'>;
 };
 
 // Schema setup
@@ -53,6 +68,11 @@ db.version(1).stores({
   notes: '++id, title, created_at',
   chats: '++id, title, created_at',
   chat_messages: '++id, chat_id, role, created_at'
+});
+
+db.version(2).stores({
+  read_chapters: '++id, [book_name+chapter]',
+  read_verses: '++id, [book_name+chapter], [book_name+chapter+verse]'
 });
 
 export { db };
