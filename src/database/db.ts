@@ -74,19 +74,42 @@ db.version(1).stores({
 });
 
 db.version(2).stores({
+  books: '++id, name, testament',
+  verses: '++id, book_name, [book_name+chapter], [book_name+chapter+verse]',
+  notes: '++id, title, created_at',
+  chats: '++id, title, created_at',
+  chat_messages: '++id, chat_id, role, created_at',
   read_chapters: '++id, [book_name+chapter]',
   read_verses: '++id, [book_name+chapter], [book_name+chapter+verse]'
 });
 
 db.version(3).stores({
+  books: '++id, name, testament',
+  verses: '++id, book_name, [book_name+chapter], [book_name+chapter+verse]',
+  chats: '++id, title, created_at',
+  chat_messages: '++id, chat_id, role, created_at',
+  read_chapters: '++id, [book_name+chapter]',
+  read_verses: '++id, [book_name+chapter], [book_name+chapter+verse]',
   notes: '++id, title, created_at, [book_name+chapter+verse]'
 });
 
 db.version(4).stores({
+  books: '++id, name, testament',
+  verses: '++id, book_name, [book_name+chapter], [book_name+chapter+verse]',
+  chats: '++id, title, created_at',
+  chat_messages: '++id, chat_id, role, created_at',
+  read_chapters: '++id, [book_name+chapter]',
+  read_verses: '++id, [book_name+chapter], [book_name+chapter+verse]',
   notes: '++id, title, created_at, [book_name+chapter], [book_name+chapter+verse]'
 });
 
 db.version(5).stores({
+  books: '++id, name, testament',
+  verses: '++id, book_name, [book_name+chapter], [book_name+chapter+verse]',
+  chats: '++id, title, created_at',
+  chat_messages: '++id, chat_id, role, created_at',
+  read_chapters: '++id, [book_name+chapter]',
+  read_verses: '++id, [book_name+chapter], [book_name+chapter+verse]',
   notes: '++id, title, created_at, updated_at, [book_name+chapter], [book_name+chapter+verse]'
 });
 
