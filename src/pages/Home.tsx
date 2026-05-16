@@ -2,6 +2,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "../database/db";
 import { BookOpen, Sparkles, MessageSquare, StickyNote, ChevronRight } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
+import { InstallPWA } from "../components/InstallPWA";
 
 export default function Home() {
   const navigate = useNavigate();
@@ -19,9 +20,12 @@ export default function Home() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 p-4 md:p-8">
-      <header className="space-y-2">
-        <h2 className="text-3xl font-serif font-bold text-[#E2E8F0] tracking-tight">Bom dia</h2>
-        <p className="text-[#94A3B8] text-lg">Que a paz do Senhor esteja com você.</p>
+      <header className="flex justify-between items-start">
+        <div className="space-y-2">
+          <h2 className="text-3xl font-serif font-bold text-[#E2E8F0] tracking-tight">Bom dia</h2>
+          <p className="text-[#94A3B8] text-lg">Que a paz do Senhor esteja com você.</p>
+        </div>
+        <InstallPWA />
       </header>
 
       <section className="bg-[#1C2026] rounded-2xl p-6 md:p-8 border border-white/5 flex flex-col md:flex-row gap-6 items-start md:items-center">

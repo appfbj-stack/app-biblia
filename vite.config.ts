@@ -13,6 +13,9 @@ export default defineConfig(({mode}) => {
       VitePWA({
         registerType: 'autoUpdate',
         includeAssets: ['icon.svg'],
+        devOptions: {
+          enabled: true
+        },
         manifest: {
           name: 'Hermes Bible',
           short_name: 'Hermes',
