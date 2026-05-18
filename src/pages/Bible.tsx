@@ -165,7 +165,7 @@ export default function Bible() {
   };
 
   const saveNote = async () => {
-    if (!editingNoteVerse) return;
+    if (editingNoteVerse === null) return;
     const note = chapterNotes.find(n => n.verse === editingNoteVerse);
     if (!noteContent.trim()) {
       if (note && note.id) await db.notes.delete(note.id);
@@ -180,6 +180,7 @@ export default function Bible() {
           content: noteContent.trim(),
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
+          title: editingNoteVerse === 0 ? `Anotação - ${currentBook} ${currentChapter}` : `Anotação - ${currentBook} ${currentChapter}:${editingNoteVerse}`
         });
       }
     }
@@ -269,6 +270,20 @@ export default function Bible() {
             className="flex items-center gap-2 px-4 py-2 bg-transparent hover:bg-white/5 border border-white/10 hover:border-white/20 rounded-full text-sm text-[#94A3B8] hover:text-[#E2E8F0] transition-all disabled:opacity-50"
           >
             <Share2 className="w-4 h-4" /> Compartilhar
+          </button>
+
+          <button 
+            onClick={() => openNote(0)}
+            disabled={!verses || verses.length === 0}
+            className={cn(
+              "flex items-center gap-2 px-4 py-2 bg-transparent border rounded-full text-sm transition-all disabled:opacity-50",
+              chapterNotes.some(n => n.verse === 0)
+                ? "bg-[#C5A059]/10 border-[#C5A059]/30 text-[#C5A059]" 
+                : "border-white/10 hover:border-white/20 hover:bg-white/5 text-[#94A3B8] hover:text-[#E2E8F0]"
+            )}
+          >
+            <StickyNote className="w-4 h-4" /> 
+            {chapterNotes.some(n => n.verse === 0) ? "Editar Anotação" : "Anotar Capítulo"}
           </button>
           
           <button 
@@ -373,7 +388,7 @@ export default function Bible() {
             <div className="flex items-center justify-between p-4 border-b border-white/5 bg-[#08090B]">
               <h3 className="font-serif font-semibold text-[#E2E8F0] flex items-center gap-2">
                 <StickyNote className="w-4 h-4 text-[#C5A059]" />
-                Anotação: {currentBook} {currentChapter}:{editingNoteVerse}
+                {editingNoteVerse === 0 ? `Anotação: ${currentBook} ${currentChapter}` : `Anotação: ${currentBook} ${currentChapter}:${editingNoteVerse}`}
               </h3>
               <button 
                 onClick={() => setEditingNoteVerse(null)}
@@ -386,7 +401,7 @@ export default function Bible() {
               <textarea
                 value={noteContent}
                 onChange={(e) => setNoteContent(e.target.value)}
-                placeholder="Escreva suas reflexões sobre este versículo..."
+                placeholder={editingNoteVerse === 0 ? "Escreva suas reflexões sobre este capítulo..." : "Escreva suas reflexões sobre este versículo..."}
                 className="w-full h-48 bg-transparent text-[#E2E8F0] px-0 py-2 border-none focus:outline-none focus:ring-0 resize-none font-sans"
                 autoFocus
               />

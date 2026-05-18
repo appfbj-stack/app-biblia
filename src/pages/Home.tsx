@@ -19,6 +19,22 @@ export default function Home() {
   const recentNotes = useLiveQuery(() => db.notes.orderBy('updated_at').reverse().limit(3).toArray(), []) || [];
   const readingHistory = useLiveQuery(() => db.reading_history.orderBy('timestamp').reverse().limit(3).toArray(), []) || [];
 
+  const chaptersWithNotes = useLiveQuery(async () => {
+    const allNotes = await db.notes.orderBy('updated_at').reverse().toArray();
+    const uniqueChapters = new Map();
+    allNotes.forEach(note => {
+      const key = `${note.book_name} ${note.chapter}`;
+      if (!uniqueChapters.has(key)) {
+        uniqueChapters.set(key, {
+          book_name: note.book_name,
+          chapter: note.chapter,
+          updated_at: note.updated_at
+        });
+      }
+    });
+    return Array.from(uniqueChapters.values()).slice(0, 3);
+  }, []) || [];
+
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 p-4 md:p-8">
       <header className="flex justify-between items-start">
@@ -103,6 +119,38 @@ export default function Home() {
         </section>
       )}
 
+      {chaptersWithNotes.length > 0 && (
+        <section className="bg-[#1C2026] rounded-2xl p-6 md:p-8 border border-white/5 space-y-4">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-serif font-semibold text-[#E2E8F0] flex items-center gap-2">
+              <BookOpen className="w-5 h-5 text-[#C5A059]" />
+              Capítulos com Anotações
+            </h3>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            {chaptersWithNotes.map((chapter, idx) => (
+              <button 
+                key={idx} 
+                className="bg-[#08090B] p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors flex items-center justify-between group text-left"
+                onClick={() => {
+                  navigate('/bible', { state: { book: chapter.book_name, chapter: chapter.chapter }});
+                }}
+              >
+                <div>
+                  <span className="text-sm font-semibold text-[#E2E8F0] block mb-1">
+                    {chapter.book_name} {chapter.chapter}
+                  </span>
+                  <span className="text-xs text-[#94A3B8]">
+                    Anotado em {new Date(chapter.updated_at).toLocaleDateString()}
+                  </span>
+                </div>
+                <ChevronRight className="w-4 h-4 text-[#C5A059] opacity-0 group-hover:opacity-100 transition-all -ml-2 group-hover:ml-0" />
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
       {recentNotes.length > 0 && (
         <section className="bg-[#1C2026] rounded-2xl p-6 md:p-8 border border-white/5 space-y-4">
           <div className="flex items-center justify-between mb-4">
@@ -124,7 +172,7 @@ export default function Home() {
               >
                 <div className="flex justify-between items-start mb-2">
                   <span className="text-sm font-semibold text-[#C5A059] uppercase tracking-wider group-hover:text-[#D4AF68] transition-colors flex items-center gap-1">
-                    {note.book_name} {note.chapter}:{note.verse}
+                    {note.book_name} {note.chapter}{note.verse === 0 ? "" : `:${note.verse}`}
                     <ChevronRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-all -ml-2 group-hover:ml-0" />
                   </span>
                   <span className="text-xs text-[#94A3B8]">{new Date(note.updated_at).toLocaleDateString()}</span>
