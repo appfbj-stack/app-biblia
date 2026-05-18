@@ -123,7 +123,7 @@ export async function seedDatabase() {
       window.dispatchEvent(new CustomEvent('seeding-status', { detail: { loading: false } }));
       console.log("Bible seeded successfully!");
     } catch(e) {
-      window.dispatchEvent(new CustomEvent('seeding-status', { detail: { loading: false } }));
+      window.dispatchEvent(new CustomEvent('seeding-status', { detail: { loading: false, error: 'Falha ao baixar a Bíblia. Verifique sua conexão.' } }));
       console.error("Failed to seed verses", e);
     }
   }
