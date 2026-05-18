@@ -1,6 +1,6 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "../database/db";
-import { BookOpen, Sparkles, MessageSquare, StickyNote, ChevronRight } from "lucide-react";
+import { BookOpen, Sparkles, MessageSquare, StickyNote, ChevronRight, History } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { InstallPWA } from "../components/InstallPWA";
 
@@ -17,6 +17,7 @@ export default function Home() {
   const progressPercent = Math.round((readChaptersCount / totalChapters) * 100);
 
   const recentNotes = useLiveQuery(() => db.notes.orderBy('updated_at').reverse().limit(3).toArray(), []) || [];
+  const readingHistory = useLiveQuery(() => db.reading_history.orderBy('timestamp').reverse().limit(3).toArray(), []) || [];
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 p-4 md:p-8">
@@ -70,6 +71,38 @@ export default function Home() {
         </Link>
       </div>
       
+      {readingHistory.length > 0 && (
+        <section className="bg-[#1C2026] rounded-2xl p-6 md:p-8 border border-white/5 space-y-4">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-serif font-semibold text-[#E2E8F0] flex items-center gap-2">
+              <History className="w-5 h-5 text-[#C5A059]" />
+              Histórico de Leitura
+            </h3>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            {readingHistory.map(entry => (
+              <button 
+                key={entry.id} 
+                className="bg-[#08090B] p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors flex items-center justify-between group text-left"
+                onClick={() => {
+                  navigate('/bible', { state: { book: entry.book_name, chapter: entry.chapter }});
+                }}
+              >
+                <div>
+                  <span className="text-sm font-semibold text-[#E2E8F0] block mb-1">
+                    {entry.book_name} {entry.chapter}
+                  </span>
+                  <span className="text-xs text-[#94A3B8]">
+                    {new Date(entry.timestamp).toLocaleDateString()}
+                  </span>
+                </div>
+                <ChevronRight className="w-4 h-4 text-[#C5A059] opacity-0 group-hover:opacity-100 transition-all -ml-2 group-hover:ml-0" />
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
       {recentNotes.length > 0 && (
         <section className="bg-[#1C2026] rounded-2xl p-6 md:p-8 border border-white/5 space-y-4">
           <div className="flex items-center justify-between mb-4">

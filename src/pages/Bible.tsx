@@ -3,7 +3,7 @@ import { useLocation } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "../database/db";
 import { useAudio } from "../contexts/AudioContext";
-import { Play, ChevronDown, CheckCircle2, Circle, StickyNote, X, Save } from "lucide-react";
+import { Play, ChevronDown, CheckCircle2, Circle, StickyNote, X, Save, Settings2, Type, AlignLeft, Share2 } from "lucide-react";
 import { cn } from "../lib/utils";
 
 export default function Bible() {
@@ -14,6 +14,36 @@ export default function Bible() {
   
   const [editingNoteVerse, setEditingNoteVerse] = useState<number | null>(null);
   const [noteContent, setNoteContent] = useState('');
+  
+  const [fontSize, setFontSize] = useState(() => localStorage.getItem('bible-font-size') || 'text-xl');
+  const [lineSpacing, setLineSpacing] = useState(() => localStorage.getItem('bible-line-spacing') || 'leading-[1.8]');
+  const [showSettings, setShowSettings] = useState(false);
+
+  useEffect(() => {
+    localStorage.setItem('bible-font-size', fontSize);
+  }, [fontSize]);
+
+  useEffect(() => {
+    localStorage.setItem('bible-line-spacing', lineSpacing);
+  }, [lineSpacing]);
+
+  useEffect(() => {
+    if (currentBook && currentChapter) {
+      const updateReadingHistory = async () => {
+        try {
+          const existing = await db.reading_history.where('[book_name+chapter]').equals([currentBook, currentChapter]).first();
+          if (existing && existing.id) {
+            await db.reading_history.update(existing.id, { timestamp: Date.now() });
+          } else {
+            await db.reading_history.add({ book_name: currentBook, chapter: currentChapter, timestamp: Date.now() });
+          }
+        } catch (e) {
+          console.error("Failed to update reading history", e);
+        }
+      };
+      updateReadingHistory();
+    }
+  }, [currentBook, currentChapter]);
   
   const books = useLiveQuery(() => db.books.toArray(), []);
   const audio = useAudio();
@@ -99,6 +129,39 @@ export default function Bible() {
     const note = chapterNotes.find(n => n.verse === verse);
     setNoteContent(note?.content || '');
     setEditingNoteVerse(verse);
+  };
+
+  const shareVerse = async (verseText: string, verseNum: number) => {
+    try {
+      const shareData = {
+        title: 'Hermes Bible',
+        text: `"${verseText}" - ${currentBook} ${currentChapter}:${verseNum}`,
+      };
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        await navigator.clipboard.writeText(shareData.text);
+        alert('Versículo copiado para a área de transferência!');
+      }
+    } catch (err) {
+      console.log('Error sharing:', err);
+    }
+  };
+
+  const shareChapter = async () => {
+    try {
+      const title = `${currentBook} ${currentChapter}`;
+      const text = `Estou lendo ${title} no Hermes Bible.`;
+      const shareData = { title, text };
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        await navigator.clipboard.writeText(shareData.text);
+        alert('Capítulo copiado para a área de transferência!');
+      }
+    } catch (err) {
+      console.log('Error sharing:', err);
+    }
   };
 
   const saveNote = async () => {
@@ -199,10 +262,25 @@ export default function Bible() {
             {readChapter ? <CheckCircle2 className="w-4 h-4" /> : <Circle className="w-4 h-4" />}
             {readChapter ? "Capítulo Lido" : "Marcar como Lido"}
           </button>
+
+          <button 
+            onClick={shareChapter}
+            disabled={!verses || verses.length === 0}
+            className="flex items-center gap-2 px-4 py-2 bg-transparent hover:bg-white/5 border border-white/10 hover:border-white/20 rounded-full text-sm text-[#94A3B8] hover:text-[#E2E8F0] transition-all disabled:opacity-50"
+          >
+            <Share2 className="w-4 h-4" /> Compartilhar
+          </button>
+          
+          <button 
+            onClick={() => setShowSettings(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-transparent hover:bg-white/5 border border-white/10 hover:border-white/20 rounded-full text-sm text-[#94A3B8] hover:text-[#E2E8F0] transition-all"
+          >
+            <Settings2 className="w-4 h-4" /> Ajustar Leitura
+          </button>
         </div>
       </div>
 
-      <div className="space-y-4 text-xl leading-[1.8] font-serif text-[#E2E8F0]">
+      <div className={`space-y-4 font-serif text-[#E2E8F0] transition-all duration-300 ${fontSize} ${lineSpacing}`}>
         {verses ? verses.map((verse) => {
           const isActive = audio.currentBook === currentBook && audio.currentChapter === currentChapter && audio.currentVerse === verse.verse;
           const isRead = readVerses.some(v => v.verse === verse.verse);
@@ -230,19 +308,36 @@ export default function Bible() {
                 <span>{verse.text}</span>
               </div>
               
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  openNote(verse.verse);
-                }}
-                className={cn(
-                  "p-2 rounded-full transition-all shrink-0 mt-1",
-                  hasNote ? "text-[#C5A059] bg-[#C5A059]/10 opacity-100" : "text-[#94A3B8] opacity-0 group-hover:opacity-100 hover:bg-white/10"
-                )}
-                title={hasNote ? "Editar Anotação" : "Adicionar Anotação"}
-              >
-                <StickyNote className="w-4 h-4" />
-              </button>
+              <div className={cn(
+                "flex flex-col sm:flex-row items-center gap-1 sm:gap-2 shrink-0 mt-1 transition-opacity",
+                hasNote ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+              )}>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    shareVerse(verse.text, verse.verse);
+                  }}
+                  className="p-2 rounded-full transition-all text-[#94A3B8] hover:text-[#C5A059] hover:bg-white/10"
+                  title="Compartilhar Versículo"
+                >
+                  <Share2 className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openNote(verse.verse);
+                  }}
+                  className={cn(
+                    "p-2 rounded-full transition-all",
+                    hasNote 
+                      ? "text-[#C5A059] bg-[#C5A059]/10 !opacity-100" 
+                      : "text-[#94A3B8] hover:bg-white/10"
+                  )}
+                  title={hasNote ? "Editar Anotação" : "Adicionar Anotação"}
+                >
+                  <StickyNote className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           )
         }) : (
@@ -309,6 +404,94 @@ export default function Bible() {
               >
                 <Save className="w-4 h-4" />
                 Salvar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Reading Settings Modal */}
+      {showSettings && (
+        <div 
+          className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-24 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" 
+          onClick={() => setShowSettings(false)}
+        >
+          <div className="bg-[#1C2026] border border-white/10 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-4 border-b border-white/5 bg-[#08090B]">
+              <h3 className="font-serif font-semibold text-[#E2E8F0] flex items-center gap-2">
+                <Settings2 className="w-4 h-4 text-[#C5A059]" />
+                Configurações de Leitura
+              </h3>
+              <button 
+                onClick={() => setShowSettings(false)}
+                className="text-[#94A3B8] hover:text-white transition-colors p-1"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 space-y-8 bg-[#1C2026]">
+              {/* Font Size */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 text-[#94A3B8]">
+                  <Type className="w-4 h-4" />
+                  <span className="text-sm font-medium uppercase tracking-widest">Tamanho da Fonte</span>
+                </div>
+                <div className="flex bg-[#08090B] p-1 rounded-xl border border-white/5">
+                  {[
+                    { label: 'P', value: 'text-lg' },
+                    { label: 'M', value: 'text-xl' },
+                    { label: 'G', value: 'text-2xl' },
+                    { label: 'GG', value: 'text-3xl' }
+                  ].map(option => (
+                    <button
+                      key={option.value}
+                      onClick={() => setFontSize(option.value)}
+                      className={cn(
+                        "flex-1 py-2 text-center rounded-lg text-sm font-medium transition-colors",
+                        fontSize === option.value 
+                          ? "bg-[#C5A059] text-white shadow-md relative z-10" 
+                          : "text-[#94A3B8] hover:text-white hover:bg-white/5"
+                      )}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Line Spacing */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 text-[#94A3B8]">
+                  <AlignLeft className="w-4 h-4" />
+                  <span className="text-sm font-medium uppercase tracking-widest">Espaçamento</span>
+                </div>
+                <div className="flex bg-[#08090B] p-1 rounded-xl border border-white/5">
+                  {[
+                    { label: 'Justo', value: 'leading-normal' },
+                    { label: 'Normal', value: 'leading-[1.8]' },
+                    { label: 'Largo', value: 'leading-loose' }
+                  ].map(option => (
+                    <button
+                      key={option.value}
+                      onClick={() => setLineSpacing(option.value)}
+                      className={cn(
+                        "flex-1 py-2 text-center rounded-lg text-sm font-medium transition-colors",
+                        lineSpacing === option.value 
+                          ? "bg-[#C5A059] text-white shadow-md relative z-10" 
+                          : "text-[#94A3B8] hover:text-white hover:bg-white/5"
+                      )}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="p-4 border-t border-white/5 bg-[#08090B]">
+              <button 
+                onClick={() => setShowSettings(false)}
+                className="w-full py-3 rounded-xl font-medium bg-[#C5A059] text-white hover:bg-[#D4AF68] transition-colors"
+              >
+                Concluir
               </button>
             </div>
           </div>
