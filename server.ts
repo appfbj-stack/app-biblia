@@ -20,9 +20,11 @@ async function startServer() {
 
   app.post("/api/chat", async (req, res) => {
     try {
-      const { message, history } = req.body;
+      const { message, history, model } = req.body;
       const openRouterKey = process.env.OPENROUTER_API_KEY;
       const geminiKey = process.env.GEMINI_API_KEY;
+
+      const selectedModel = model || "deepseek/deepseek-chat:free";
 
       if (openRouterKey) {
         // Build OpenRouter/OpenAI message format
@@ -44,7 +46,7 @@ async function startServer() {
             "X-Title": "Hermes Bible"
           },
           body: JSON.stringify({
-            model: "google/gemini-2.5-pro", // You can change this to any OpenRouter model
+            model: selectedModel,
             messages: messages,
             temperature: 0.7,
           })

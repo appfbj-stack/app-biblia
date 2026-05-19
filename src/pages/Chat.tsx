@@ -4,6 +4,7 @@ import { cn } from "../lib/utils";
 import { sendMessageToHermes } from "../services/hermes";
 
 export default function Chat() {
+  const [selectedModel, setSelectedModel] = useState("deepseek/deepseek-chat:free");
   const [messages, setMessages] = useState([
     { id: 1, role: 'assistant', text: 'Graça e paz! Sou Hermes, seu assistente bíblico. Como posso te ajudar hoje?' }
   ]);
@@ -32,7 +33,7 @@ export default function Chat() {
         parts: [{ text: m.text }] 
       }));
       
-      const responseText = await sendMessageToHermes(userMsgText, history);
+      const responseText = await sendMessageToHermes(userMsgText, history, selectedModel);
       
       setMessages([...newMessages, { id: Date.now() + 1, role: 'assistant', text: responseText || '' }]);
     } catch (error) {
@@ -45,11 +46,24 @@ export default function Chat() {
 
   return (
     <div className="max-w-3xl mx-auto h-[calc(100vh-8rem)] flex flex-col bg-[#1C2026] rounded-2xl shadow-sm border border-white/5 overflow-hidden animate-in fade-in zoom-in-95 duration-300">
-      <div className="bg-[#16191E] text-[#E2E8F0] p-4 text-center border-b border-white/5">
-        <h2 className="font-bold text-lg flex items-center justify-center gap-2">
-          Hermes IA
-        </h2>
-        <p className="text-[#C5A059] text-xs mt-1 uppercase tracking-widest font-medium">Inteligência Bíblica</p>
+      <div className="bg-[#16191E] text-[#E2E8F0] p-4 border-b border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="text-center sm:text-left">
+          <h2 className="font-bold text-lg flex items-center justify-center sm:justify-start gap-2">
+            Hermes IA
+          </h2>
+          <p className="text-[#C5A059] text-xs mt-1 uppercase tracking-widest font-medium">Inteligência Bíblica</p>
+        </div>
+        <select 
+          value={selectedModel}
+          onChange={(e) => setSelectedModel(e.target.value)}
+          className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-[#E2E8F0] focus:outline-none focus:ring-2 focus:ring-[#C5A059]/50 transition-all cursor-pointer"
+        >
+          <option value="deepseek/deepseek-chat:free">DeepSeek V3 (Free)</option>
+          <option value="deepseek/deepseek-r1:free">DeepSeek R1 (Free)</option>
+          <option value="google/gemini-2.0-flash-lite-preview-02-05:free">Gemini 2.0 Flash Lite (Free)</option>
+          <option value="google/gemini-2.0-pro-exp-02-05:free">Gemini 2.0 Pro Exp (Free)</option>
+          <option value="meta-llama/llama-3.3-70b-instruct:free">Llama 3.3 70B (Free)</option>
+        </select>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 bg-[#0F1115]">

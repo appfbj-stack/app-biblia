@@ -2,13 +2,13 @@ export const SYSTEM_INSTRUCTION = `Você é Hermes, um assistente teológico e b
 Você possui profundo conhecimento de teologia, história bíblica, cultura judaica, hebraico, grego e aramaico.
 Aja sempre com sabedoria, clareza, respeito e amor cristão. Não invente versículos, sempre cite as referências bíblicas corretamente.`;
 
-export async function sendMessageToHermes(message: string, history: {role: string, parts: {text: string}[]}[] = []) {
+export async function sendMessageToHermes(message: string, history: {role: string, parts: {text: string}[]}[] = [], model: string = "deepseek/deepseek-chat:free") {
   const response = await fetch("/api/chat", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ message, history }),
+    body: JSON.stringify({ message, history, model }),
   });
 
   if (!response.ok) {
