@@ -83,7 +83,14 @@ export async function seedDatabase() {
     try {
       window.dispatchEvent(new CustomEvent('seeding-status', { detail: { loading: true, message: 'Baixando a Bíblia...' } }));
       console.log("Downloading full Bible...");
-      const res = await fetch('https://cdn.jsdelivr.net/gh/thiagobodruk/bible@master/json/pt_nvi.json');
+      // Try local proxy first to avoid adblockers/network blocks on mobile
+      let res = await fetch('/api/bible/pt_nvi').catch(() => null);
+      
+      // Fallback to github user content if backend is offline or SPA only mode
+      if (!res || !res.ok) {
+        res = await fetch('https://cdn.jsdelivr.net/gh/thiagobodruk/bible@master/json/pt_nvi.json');
+      }
+      
       const bibleData = await res.json();
       
       const allVerses: any[] = [];

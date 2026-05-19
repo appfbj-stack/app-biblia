@@ -18,6 +18,20 @@ async function startServer() {
     res.json({ status: "ok" });
   });
 
+  app.get("/api/bible/pt_nvi", async (req, res) => {
+    try {
+      const fetchReq = await fetch("https://cdn.jsdelivr.net/gh/thiagobodruk/bible@master/json/pt_nvi.json");
+      if (!fetchReq.ok) {
+        throw new Error(`Failed to fetch Bible from source: ${fetchReq.status}`);
+      }
+      const data = await fetchReq.json();
+      res.json(data);
+    } catch (e: any) {
+      console.error("Error fetching Bible proxy:", e);
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   app.post("/api/chat", async (req, res) => {
     try {
       const { message, history, model } = req.body;
