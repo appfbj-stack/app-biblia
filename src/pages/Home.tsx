@@ -1,6 +1,6 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "../database/db";
-import { BookOpen, Sparkles, MessageSquare, StickyNote, ChevronRight, History } from "lucide-react";
+import { BookOpen, Sparkles, MessageSquare, StickyNote, ChevronRight, History, Download } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { InstallPWA } from "../components/InstallPWA";
 
@@ -35,6 +35,23 @@ export default function Home() {
     return Array.from(uniqueChapters.values()).slice(0, 3);
   }, []) || [];
 
+  const exportNotas = async () => {
+    try {
+      const allNotes = await db.notes.toArray();
+      const jsonData = JSON.stringify(allNotes, null, 2);
+      const blob = new Blob([jsonData], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `hermes_notas_${new Date().toISOString().split('T')[0]}.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error("Falha ao exportar notas", e);
+      alert("Falha ao exportar as anotações.");
+    }
+  };
+
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 p-4 md:p-8">
       <header className="flex justify-between items-start">
@@ -42,7 +59,17 @@ export default function Home() {
           <h2 className="text-3xl font-serif font-bold text-[#E2E8F0] tracking-tight">Bom dia</h2>
           <p className="text-[#94A3B8] text-lg">Que a paz do Senhor esteja com você.</p>
         </div>
-        <InstallPWA />
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={exportNotas}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 text-sm font-medium text-[#E2E8F0] border border-white/10 transition-colors"
+            title="Exportar Anotações (JSON)"
+          >
+            <Download className="w-4 h-4" />
+            <span className="hidden sm:inline">Exportar</span>
+          </button>
+          <InstallPWA />
+        </div>
       </header>
 
       <section className="bg-[#1C2026] rounded-2xl p-6 md:p-8 border border-white/5 flex flex-col md:flex-row gap-6 items-start md:items-center">

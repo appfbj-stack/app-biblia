@@ -3,7 +3,7 @@ import { useLocation } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "../database/db";
 import { useAudio } from "../contexts/AudioContext";
-import { Play, ChevronDown, CheckCircle2, Circle, StickyNote, X, Save, Settings2, Type, AlignLeft, Share2 } from "lucide-react";
+import { Play, Pause, Volume2, ChevronDown, CheckCircle2, Circle, StickyNote, X, Save, Settings2, Type, AlignLeft, Share2 } from "lucide-react";
 import { cn } from "../lib/utils";
 
 export default function Bible() {
@@ -325,8 +325,31 @@ export default function Bible() {
               
               <div className={cn(
                 "flex flex-col sm:flex-row items-center gap-1 sm:gap-2 shrink-0 mt-1 transition-opacity",
-                hasNote ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                hasNote || isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"
               )}>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (isActive && audio.isPlaying) {
+                      audio.togglePlayPause();
+                    } else {
+                      audio.playChapter(currentBook, currentChapter, verse.verse);
+                    }
+                  }}
+                  className={cn(
+                    "p-2 rounded-full transition-all",
+                    isActive && audio.isPlaying
+                      ? "text-[#C5A059] bg-[#C5A059]/10 !opacity-100 animate-pulse"
+                      : "text-[#94A3B8] hover:text-[#C5A059] hover:bg-white/10"
+                  )}
+                  title={isActive && audio.isPlaying ? "Pausar leitura" : "Ouvir versículo"}
+                >
+                  {isActive && audio.isPlaying ? (
+                    <Pause className="w-4 h-4" />
+                  ) : (
+                    <Volume2 className="w-4 h-4" />
+                  )}
+                </button>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
