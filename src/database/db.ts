@@ -60,6 +60,15 @@ export interface ReadingHistory {
   timestamp: number;
 }
 
+export interface HighlightedVerse {
+  id?: number;
+  book_name: string;
+  chapter: number;
+  verse: number;
+  color: string; // e.g., 'yellow', 'green', 'blue', 'red', 'purple'
+  created_at: string;
+}
+
 // Database declaration
 const db = new Dexie('HermesBible') as Dexie & {
   books: EntityTable<BibleBook, 'id'>;
@@ -70,6 +79,7 @@ const db = new Dexie('HermesBible') as Dexie & {
   read_chapters: EntityTable<ReadChapter, 'id'>;
   read_verses: EntityTable<ReadVerse, 'id'>;
   reading_history: EntityTable<ReadingHistory, 'id'>;
+  highlighted_verses: EntityTable<HighlightedVerse, 'id'>;
 };
 
 // Schema setup
@@ -130,6 +140,18 @@ db.version(6).stores({
   read_verses: '++id, [book_name+chapter], [book_name+chapter+verse]',
   notes: '++id, title, created_at, updated_at, [book_name+chapter], [book_name+chapter+verse]',
   reading_history: '++id, [book_name+chapter], timestamp'
+});
+
+db.version(7).stores({
+  books: '++id, name, testament',
+  verses: '++id, book_name, [book_name+chapter], [book_name+chapter+verse]',
+  chats: '++id, title, created_at',
+  chat_messages: '++id, chat_id, role, created_at',
+  read_chapters: '++id, [book_name+chapter]',
+  read_verses: '++id, [book_name+chapter], [book_name+chapter+verse]',
+  notes: '++id, title, created_at, updated_at, [book_name+chapter], [book_name+chapter+verse]',
+  reading_history: '++id, [book_name+chapter], timestamp',
+  highlighted_verses: '++id, [book_name+chapter], [book_name+chapter+verse]'
 });
 
 export { db };

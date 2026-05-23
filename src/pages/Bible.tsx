@@ -3,7 +3,7 @@ import { useLocation } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "../database/db";
 import { useAudio } from "../contexts/AudioContext";
-import { Play, Pause, Volume2, ChevronDown, CheckCircle2, Circle, StickyNote, X, Save, Settings2, Type, AlignLeft, Share2, Search, Loader2, Book } from "lucide-react";
+import { Play, Pause, Volume2, ChevronDown, CheckCircle2, Circle, StickyNote, X, Save, Settings2, Type, AlignLeft, Share2, Search, Loader2, Book, Languages, Highlighter } from "lucide-react";
 import { cn } from "../lib/utils";
 
 const highlightText = (text: string, search: string) => {
@@ -120,6 +120,14 @@ const InteractiveVerseText: React.FC<InteractiveVerseTextProps> = ({ text, searc
   );
 };
 
+const HIGHLIGHT_STYLES: Record<string, string> = {
+  gold: "bg-[#C5A059]/15 border-l-2 border-[#C5A059] rounded-l-none",
+  green: "bg-emerald-500/10 border-l-2 border-emerald-500 rounded-l-none",
+  blue: "bg-blue-500/10 border-l-2 border-blue-500 rounded-l-none",
+  red: "bg-red-500/10 border-l-2 border-red-500 rounded-l-none",
+  purple: "bg-purple-500/10 border-l-2 border-purple-500 rounded-l-none",
+};
+
 export default function Bible() {
   const location = useLocation();
   const [currentBook, setCurrentBook] = useState(location.state?.book || 'Gênesis');
@@ -183,6 +191,118 @@ export default function Bible() {
     }
   };
 
+  // Original Verse translation & parsing state
+  const [originalVerseInfo, setOriginalVerseInfo] = useState<{
+    book: string;
+    chapter: number;
+    verse: number;
+    original_language: string;
+    original_text_unicode: string;
+    original_text_transliterated: string;
+    literal_translation_pt: string;
+    analysis: Array<{
+      term: string;
+      transliteration: string;
+      strong?: string;
+      morfologia: string;
+      meaning: string;
+      explanation: string;
+    }>;
+    exegesis_summary: string;
+  } | null>(null);
+  const [isSearchingOriginal, setIsSearchingOriginal] = useState(false);
+  const [originalError, setOriginalError] = useState<string | null>(null);
+  const [showOriginalModal, setShowOriginalModal] = useState(false);
+
+  const handleOpenOriginalLanguage = async (verseObj: any) => {
+    setIsSearchingOriginal(true);
+    setOriginalError(null);
+    setOriginalVerseInfo({
+      book: currentBook,
+      chapter: currentChapter,
+      verse: verseObj.verse,
+      original_language: "",
+      original_text_unicode: "",
+      original_text_transliterated: "",
+      literal_translation_pt: "",
+      analysis: [],
+      exegesis_summary: ""
+    });
+    setShowOriginalModal(true);
+
+    try {
+      const response = await fetch("/api/verse-original", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          text: verseObj.text,
+          book: currentBook,
+          chapter: currentChapter,
+          verse: verseObj.verse,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Não foi possível carregar o texto original. Verifique os limites da API ou tente mais tarde.");
+      }
+
+      const data = await response.json();
+      setOriginalVerseInfo(data);
+    } catch (err: any) {
+      console.error("Original language loading error:", err);
+      setOriginalError(err.message || "Falha de conexão.");
+    } finally {
+      setIsSearchingOriginal(false);
+    }
+  };
+
+  // Verse Highlighting State & Trigger
+  const [activePaletteVerse, setActivePaletteVerse] = useState<number | null>(null);
+
+  const handleHighlight = async (verseNum: number, color: string | null) => {
+    try {
+      const existing = await db.highlighted_verses
+        .where('[book_name+chapter+verse]')
+        .equals([currentBook, currentChapter, verseNum])
+        .first();
+
+      if (color === null) {
+        if (existing && existing.id) {
+          await db.highlighted_verses.delete(existing.id);
+        }
+      } else {
+        if (existing && existing.id) {
+          await db.highlighted_verses.update(existing.id, {
+            color,
+            created_at: new Date().toISOString()
+          });
+        } else {
+          await db.highlighted_verses.add({
+            book_name: currentBook,
+            chapter: currentChapter,
+            verse: verseNum,
+            color,
+            created_at: new Date().toISOString()
+          });
+        }
+      }
+    } catch (err) {
+      console.error("Error updating highlight:", err);
+    }
+  };
+
+  useEffect(() => {
+    const handleGlobalClick = () => {
+      setActivePaletteVerse(null);
+    };
+    window.addEventListener('click', handleGlobalClick);
+    return () => {
+      window.removeEventListener('click', handleGlobalClick);
+    };
+  }, []);
+
   useEffect(() => {
     localStorage.setItem('bible-font-size', fontSize);
   }, [fontSize]);
@@ -242,6 +362,11 @@ export default function Bible() {
 
   const chapterNotes = useLiveQuery(
     () => db.notes.where('[book_name+chapter]').equals([currentBook, currentChapter]).toArray(),
+    [currentBook, currentChapter]
+  ) || [];
+
+  const highlightedVerses = useLiveQuery(
+    () => db.highlighted_verses.where('[book_name+chapter]').equals([currentBook, currentChapter]).toArray(),
     [currentBook, currentChapter]
   ) || [];
 
@@ -513,14 +638,17 @@ export default function Bible() {
           const isActive = audio.currentBook === currentBook && audio.currentChapter === currentChapter && audio.currentVerse === verse.verse;
           const isRead = readVerses.some(v => v.verse === verse.verse);
           const hasNote = chapterNotes.some(n => n.verse === verse.verse);
+          const highlightObj = highlightedVerses.find(h => h.verse === verse.verse);
+          const highlightClass = highlightObj ? HIGHLIGHT_STYLES[highlightObj.color] : "";
           
           return (
             <div 
               key={verse.id} 
               className={cn(
                 "group relative transition-all duration-300 p-2 -mx-2 rounded-lg flex gap-2 items-start",
-                isActive ? "bg-[#C5A059]/10 text-white" : "hover:bg-white/5",
-                isRead && !isActive ? "text-[#94A3B8]" : ""
+                highlightClass,
+                isActive ? (highlightClass ? "text-white" : "bg-[#C5A059]/10 text-white") : (!highlightClass && "hover:bg-white/5"),
+                isRead && !isActive && !highlightClass ? "text-[#94A3B8]" : ""
               )}
             >
               <div 
@@ -542,7 +670,7 @@ export default function Bible() {
               
               <div className={cn(
                 "flex flex-col sm:flex-row items-center gap-1 sm:gap-2 shrink-0 mt-1 transition-opacity",
-                hasNote || isActive ? "opacity-100" : "opacity-75 sm:opacity-0 sm:group-hover:opacity-100"
+                hasNote || isActive || highlightObj ? "opacity-100" : "opacity-75 sm:opacity-0 sm:group-hover:opacity-100"
               )}>
                 <button
                   onClick={(e) => {
@@ -580,6 +708,16 @@ export default function Bible() {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
+                    handleOpenOriginalLanguage(verse);
+                  }}
+                  className="p-2 rounded-full transition-all text-[#94A3B8] hover:text-[#C5A059] hover:bg-white/10"
+                  title="Traduzir no Original"
+                >
+                  <Languages className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
                     openNote(verse.verse);
                   }}
                   className={cn(
@@ -592,6 +730,85 @@ export default function Bible() {
                 >
                   <StickyNote className="w-4 h-4" />
                 </button>
+                
+                {/* Highlighting Button & Click-away Popover */}
+                <div className="relative">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setActivePaletteVerse(activePaletteVerse === verse.verse ? null : verse.verse);
+                    }}
+                    className={cn(
+                      "p-2 rounded-full transition-all",
+                      highlightObj
+                        ? "text-[#C5A059] bg-[#C5A059]/10 !opacity-100"
+                        : "text-[#94A3B8] hover:text-[#C5A059] hover:bg-white/10"
+                    )}
+                    title={highlightObj ? "Mudar / Remover Destaque" : "Marcar / Destacar Versículo"}
+                  >
+                    <Highlighter className="w-4 h-4" />
+                  </button>
+
+                  {activePaletteVerse === verse.verse && (
+                    <div 
+                      className="absolute right-0 bottom-full mb-2 z-30 bg-[#16191E] border border-white/10 rounded-xl p-2.5 shadow-2xl flex items-center gap-2 animate-in zoom-in-95 duration-100 min-w-[160px]"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <button
+                        onClick={() => {
+                          handleHighlight(verse.verse, 'gold');
+                          setActivePaletteVerse(null);
+                        }}
+                        className="w-5 h-5 rounded-full bg-[#C5A059] border border-white/20 hover:scale-110 active:scale-95 transition-transform shrink-0"
+                        title="Dourado"
+                      />
+                      <button
+                        onClick={() => {
+                          handleHighlight(verse.verse, 'green');
+                          setActivePaletteVerse(null);
+                        }}
+                        className="w-5 h-5 rounded-full bg-emerald-500 border border-white/20 hover:scale-110 active:scale-95 transition-transform shrink-0"
+                        title="Verde"
+                      />
+                      <button
+                        onClick={() => {
+                          handleHighlight(verse.verse, 'blue');
+                          setActivePaletteVerse(null);
+                        }}
+                        className="w-5 h-5 rounded-full bg-blue-500 border border-white/20 hover:scale-110 active:scale-95 transition-transform shrink-0"
+                        title="Azul"
+                      />
+                      <button
+                        onClick={() => {
+                          handleHighlight(verse.verse, 'red');
+                          setActivePaletteVerse(null);
+                        }}
+                        className="w-5 h-5 rounded-full bg-red-500 border border-white/20 hover:scale-110 active:scale-95 transition-transform shrink-0"
+                        title="Vermelho"
+                      />
+                      <button
+                        onClick={() => {
+                          handleHighlight(verse.verse, 'purple');
+                          setActivePaletteVerse(null);
+                        }}
+                        className="w-5 h-5 rounded-full bg-purple-500 border border-white/20 hover:scale-110 active:scale-95 transition-transform shrink-0"
+                        title="Roxo"
+                      />
+                      {highlightObj && (
+                        <button
+                          onClick={() => {
+                            handleHighlight(verse.verse, null);
+                            setActivePaletteVerse(null);
+                          }}
+                          className="px-2 py-0.5 rounded bg-white/5 hover:bg-red-500/10 text-red-400 text-[10px] font-sans ml-1 transition-all uppercase font-bold tracking-wider shrink-0"
+                          title="Remover Destaque"
+                        >
+                          Limpar
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )
@@ -867,6 +1084,150 @@ export default function Bible() {
                 className="px-6 py-2 rounded-xl font-medium bg-[#C5A059] text-[#0F1115] hover:bg-[#D4AF68] transition-colors text-sm font-sans"
               >
                 Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Original Language Analysis Modal */}
+      {showOriginalModal && originalVerseInfo && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200"
+          onClick={() => setShowOriginalModal(false)}
+        >
+          <div 
+            className="bg-[#1C2026] border border-white/10 rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200 text-left"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b border-white/5 bg-[#08090B]">
+              <h3 className="font-serif font-semibold text-[#E2E8F0] flex items-center gap-2">
+                <Languages className="w-5 h-5 text-[#C5A059]" />
+                Tradução e Análise no Original
+              </h3>
+              <button 
+                onClick={() => setShowOriginalModal(false)}
+                className="text-[#94A3B8] hover:text-white transition-colors p-1"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Content body */}
+            <div className="p-6 space-y-6 overflow-y-auto max-h-[75vh] custom-scrollbar">
+              {isSearchingOriginal ? (
+                <div className="flex flex-col items-center justify-center py-16 space-y-4">
+                  <Loader2 className="w-10 h-10 text-[#C5A059] animate-spin" />
+                  <p className="text-sm text-[#94A3B8] text-center font-sans max-w-xs">
+                    Consultando as línguas originais e exegese de <span className="text-[#C5A059] font-medium font-serif">{originalVerseInfo.book} {originalVerseInfo.chapter}:{originalVerseInfo.verse}</span>...
+                  </p>
+                </div>
+              ) : originalError ? (
+                <div className="text-center py-12 space-y-4">
+                  <div className="text-red-400 font-sans text-sm font-semibold">
+                    Ops! Houve um erro ao buscar a análise no original.
+                  </div>
+                  <p className="text-xs text-[#94A3B8] max-w-sm mx-auto">
+                    {originalError}
+                  </p>
+                  <button
+                    onClick={() => handleOpenOriginalLanguage({ verse: originalVerseInfo.verse, text: "" })}
+                    className="px-4 py-2 mt-4 bg-[#C5A059]/25 hover:bg-[#C5A059]/35 text-[#C5A059] text-xs font-bold rounded-full transition-colors font-sans mx-auto block"
+                  >
+                    Tentar Novamente
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-6 font-sans">
+                  {/* Title */}
+                  <div className="border-b border-white/5 pb-4">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-[#C5A059]">
+                      {originalVerseInfo.original_language || "Original"} completo
+                    </span>
+                    <h4 className="text-lg font-serif font-semibold text-[#E2E8F0] mt-1">
+                      {originalVerseInfo.book} {originalVerseInfo.chapter}:{originalVerseInfo.verse}
+                    </h4>
+                  </div>
+
+                  {/* Original script big card */}
+                  <div className="bg-[#08090B] p-6 rounded-xl border border-white/5 text-center space-y-3">
+                    <p className="text-3xl font-serif text-white leading-relaxed dir-rtl px-4 tracking-wide select-text selection:bg-[#C5A059]/30">
+                      {originalVerseInfo.original_text_unicode}
+                    </p>
+                    {originalVerseInfo.original_text_transliterated && (
+                      <p className="text-xs font-mono text-[#94A3B8] italic">
+                        Pronúncia: {originalVerseInfo.original_text_transliterated}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Literal translation vs original contrast */}
+                  {originalVerseInfo.literal_translation_pt && (
+                    <div className="space-y-2">
+                      <h5 className="text-xs font-semibold uppercase tracking-wider text-[#94A3B8] flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#C5A059]" />
+                        Tradução Exegética Literal
+                      </h5>
+                      <p className="text-[#E2E8F0] text-sm leading-relaxed font-serif bg-[#1E232C] p-4 rounded-xl border border-white/5">
+                        "{originalVerseInfo.literal_translation_pt}"
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Word by word breakdown grid */}
+                  {originalVerseInfo.analysis && originalVerseInfo.analysis.length > 0 && (
+                    <div className="space-y-3">
+                      <h5 className="text-xs font-semibold uppercase tracking-wider text-[#94A3B8] flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#C5A059]" />
+                        Decomposição Interlinear e Termos-Chave
+                      </h5>
+                      <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1 custom-scrollbar">
+                        {originalVerseInfo.analysis.map((item, index) => (
+                          <div key={index} className="bg-[#16191E] border border-white/5 hover:border-white/10 p-3 rounded-lg flex flex-col md:flex-row md:items-start gap-3 transition-colors text-xs">
+                            <div className="md:w-1/4 shrink-0 flex flex-col gap-1">
+                              <span className="text-lg font-serif text-white font-bold select-all">{item.term}</span>
+                              <span className="text-[10px] font-sans font-medium text-[#C5A059] uppercase">{item.transliteration}</span>
+                              {item.strong && (
+                                <span className="text-[9px] font-mono text-[#94A3B8]/80">{item.strong}</span>
+                              )}
+                            </div>
+                            <div className="flex-1 space-y-1">
+                              <div className="flex justify-between items-center flex-wrap gap-2 text-[10px] text-[#94A3B8]">
+                                <span className="font-semibold italic">{item.morfologia}</span>
+                                <span className="text-[#C5A059] font-bold bg-[#C5A059]/10 px-1.5 py-0.5 rounded">{item.meaning}</span>
+                              </div>
+                              <p className="text-[#E2E8F0] text-xs leading-relaxed font-serif">{item.explanation}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Exegesis synthesis summary */}
+                  {originalVerseInfo.exegesis_summary && (
+                    <div className="space-y-2 pt-2 border-t border-white/5">
+                      <h5 className="text-xs font-semibold uppercase tracking-wider text-[#94A3B8] flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#C5A059]" />
+                        Estudo Exegético de Hermes
+                      </h5>
+                      <p className="text-[#94A3B8] text-xs leading-relaxed font-sans bg-white/5 p-4 rounded-xl border border-white/5">
+                        {originalVerseInfo.exegesis_summary}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 border-t border-white/5 bg-[#08090B] flex justify-end">
+              <button 
+                onClick={() => setShowOriginalModal(false)}
+                className="px-6 py-2 rounded-xl font-medium bg-[#C5A059] text-[#0F1115] hover:bg-[#D4AF68] transition-colors text-sm font-sans"
+              >
+                Concluir Estudo
               </button>
             </div>
           </div>

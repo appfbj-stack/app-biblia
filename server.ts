@@ -121,6 +121,105 @@ Retorne estritamente o objeto JSON contendo as informações originais e a defin
     }
   });
 
+  app.post("/api/verse-original", async (req, res) => {
+    try {
+      const { text, book, chapter, verse } = req.body;
+      if (!text || !book || !chapter || !verse) {
+        return res.status(400).json({ error: "All properties (text, book, chapter, verse) are required" });
+      }
+
+      const openRouterKey = process.env.OPENROUTER_API_KEY;
+      const geminiKey = process.env.GEMINI_API_KEY;
+
+      const SYSTEM_INSTRUCTION_ORIGINAL = `Você é um erudito em línguas originais bíblicas (Grego Koiné, Hebraico Bíblico e Aramaico) chamado Hermes.
+O usuário lhe dará um versículo traduzido em Português.
+Sua missão é fornecer a tradução original correspondente e uma análise detalhada palavra por palavra (interlinear ou termos chave) com transliteração, morfologia, significado e notas exegéticas fundamentadas.
+
+O retorno DEVE ser um objeto JSON válido, com a seguinte estrutura:
+{
+  "book": "Nome do Livro",
+  "chapter": número,
+  "verse": número,
+  "original_language": "Hebraico" ou "Grego" ou "Aramaico",
+  "original_text_unicode": "O texto completo no alfabeto original (com pontuação massorética ou acentuação grega completa)",
+  "original_text_transliterated": "A pronúncia/transliteração fonética legível do versículo inteiro",
+  "literal_translation_pt": "Sua tradução literal direta das línguas originais para o português",
+  "analysis": [
+    {
+      "term": "Termo original (grego/hebraico)",
+      "transliteration": "Transliteração",
+      "strong": "Número de Strong (opcional, ex: H7225, G3056)",
+      "morfologia": "Classe gramatical / Morfologia curta em português",
+      "meaning": "Significado literal básico",
+      "explanation": "Significado teológico ou nuance específica no contexto do versículo"
+    }
+  ],
+  "exegesis_summary": "Uma explicação exegética e teológica do versículo, resumindo a mensagem central e revelando profundidades perdidas na tradução padrão."
+}`;
+
+      const prompt = `Traduza para o original e analise o versículo:
+Livro: ${book}
+Capítulo: ${chapter}
+Versículo: ${verse}
+Texto traduzido em português: "${text}"
+
+Retorne estritamente o JSON descrito nas instruções do sistema.`;
+
+      if (openRouterKey) {
+        const messages = [
+          { role: "system", content: SYSTEM_INSTRUCTION_ORIGINAL },
+          { role: "user", content: prompt }
+        ];
+
+        const openRouterResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${openRouterKey}`,
+            "HTTP-Referer": process.env.APP_URL || "https://ai.studio",
+            "X-Title": "Hermes Bible"
+          },
+          body: JSON.stringify({
+            model: "deepseek/deepseek-chat:free",
+            messages: messages,
+            response_format: { type: "json_object" },
+            temperature: 0.3,
+          })
+        });
+
+        if (!openRouterResponse.ok) {
+          const errText = await openRouterResponse.text();
+          throw new Error(`OpenRouter API Error: ${openRouterResponse.status} ${errText}`);
+        }
+
+        const data = await openRouterResponse.json();
+        const textRes = data.choices?.[0]?.message?.content || "{}";
+        res.json(JSON.parse(textRes));
+
+      } else if (geminiKey) {
+        const ai = new GoogleGenAI({ apiKey: geminiKey });
+
+        const response = await ai.models.generateContent({
+          model: "gemini-3.1-pro-preview",
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          config: {
+            systemInstruction: SYSTEM_INSTRUCTION_ORIGINAL,
+            temperature: 0.3,
+            responseMimeType: "application/json"
+          }
+        });
+
+        const textRes = response.text || "{}";
+        res.json(JSON.parse(textRes));
+      } else {
+        throw new Error("Neither OPENROUTER_API_KEY nor GEMINI_API_KEY environment variable is configured.");
+      }
+    } catch (err: any) {
+      console.error("Error in verse original api:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   app.post("/api/chat", async (req, res) => {
     try {
       const { message, history, model } = req.body;
