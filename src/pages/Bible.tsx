@@ -3,8 +3,29 @@ import { useLocation } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "../database/db";
 import { useAudio } from "../contexts/AudioContext";
-import { Play, Pause, Volume2, ChevronDown, CheckCircle2, Circle, StickyNote, X, Save, Settings2, Type, AlignLeft, Share2 } from "lucide-react";
+import { Play, Pause, Volume2, ChevronDown, CheckCircle2, Circle, StickyNote, X, Save, Settings2, Type, AlignLeft, Share2, Search } from "lucide-react";
 import { cn } from "../lib/utils";
+
+const highlightText = (text: string, search: string) => {
+  if (!search.trim()) return <span>{text}</span>;
+  
+  const regex = new RegExp(`(${search.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')})`, 'gi');
+  const parts = text.split(regex);
+  
+  return (
+    <span>
+      {parts.map((part, index) => 
+        regex.test(part) ? (
+          <mark key={index} className="bg-[#C5A059]/40 text-white rounded-sm px-0.5 font-bold">
+            {part}
+          </mark>
+        ) : (
+          part
+        )
+      )}
+    </span>
+  );
+};
 
 export default function Bible() {
   const location = useLocation();
@@ -14,6 +35,7 @@ export default function Bible() {
   
   const [editingNoteVerse, setEditingNoteVerse] = useState<number | null>(null);
   const [noteContent, setNoteContent] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
   
   const [fontSize, setFontSize] = useState(() => localStorage.getItem('bible-font-size') || 'text-xl');
   const [lineSpacing, setLineSpacing] = useState(() => localStorage.getItem('bible-line-spacing') || 'leading-[1.8]');
@@ -43,6 +65,10 @@ export default function Bible() {
       };
       updateReadingHistory();
     }
+  }, [currentBook, currentChapter]);
+
+  useEffect(() => {
+    setSearchTerm('');
   }, [currentBook, currentChapter]);
   
   const books = useLiveQuery(() => db.books.toArray(), []);
@@ -80,6 +106,12 @@ export default function Bible() {
   const totalChapters = books?.reduce((acc, book) => acc + book.chapters, 0) || 1189;
   const readChaptersCount = useLiveQuery(() => db.read_chapters.count(), []) || 0;
   const progressPercent = Math.round((readChaptersCount / totalChapters) * 100);
+
+  const getSearchMatchesCount = () => {
+    if (!searchTerm.trim() || !verses) return 0;
+    const term = searchTerm.toLowerCase();
+    return verses.filter(v => v.text.toLowerCase().includes(term)).length;
+  };
 
   const handleBookChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const bookName = e.target.value;
@@ -208,6 +240,40 @@ export default function Bible() {
         </div>
       </div>
 
+      {/* Search Bar */}
+      <div className="mb-6 relative">
+        <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+          <Search className="h-4 w-4 text-[#94A3B8]" />
+        </div>
+        <input
+          type="text"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          placeholder="Buscar no capítulo atual..."
+          className="w-full bg-[#1C2026] border border-white/5 focus:border-[#C5A059]/40 rounded-xl pl-10 pr-10 py-2.5 text-sm text-[#E2E8F0] placeholder-[#94A3B8] focus:outline-none focus:ring-1 focus:ring-[#C5A059]/30 transition-all font-sans"
+        />
+        {searchTerm && (
+          <button
+            onClick={() => setSearchTerm('')}
+            className="absolute inset-y-0 right-3 flex items-center text-[#94A3B8] hover:text-white transition-colors"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
+        {searchTerm && (
+          <div className="mt-1.5 flex justify-between items-center px-1 text-xs text-[#94A3B8]">
+            <span>
+              {getSearchMatchesCount() === 1 
+                ? "1 versículo encontrado" 
+                : `${getSearchMatchesCount()} versículos encontrados`}
+            </span>
+            {getSearchMatchesCount() > 0 && (
+              <span className="text-[#C5A059]/80 font-medium">Resultados destacados abaixo</span>
+            )}
+          </div>
+        )}
+      </div>
+
       <div className="text-center mb-10 border-b border-white/5 pb-8 flex flex-col items-center">
         <div className="relative inline-flex items-center group mb-2">
           <select 
@@ -320,7 +386,7 @@ export default function Bible() {
                 )}>
                   {verse.verse}
                 </sup>
-                <span>{verse.text}</span>
+                <span>{highlightText(verse.text, searchTerm)}</span>
               </div>
               
               <div className={cn(
