@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "../database/db";
 import { useAudio } from "../contexts/AudioContext";
-import { Play, Pause, Volume2, ChevronDown, CheckCircle2, Circle, StickyNote, X, Save, Settings2, Type, AlignLeft, Share2, Search } from "lucide-react";
+import { Play, Pause, Volume2, ChevronDown, CheckCircle2, Circle, StickyNote, X, Save, Settings2, Type, AlignLeft, Share2, Search, Loader2, Book } from "lucide-react";
 import { cn } from "../lib/utils";
 
 const highlightText = (text: string, search: string) => {
@@ -27,6 +27,99 @@ const highlightText = (text: string, search: string) => {
   );
 };
 
+interface WordSelectableProps {
+  word: string;
+  onLongPress: (cleanWord: string) => void;
+  isHighlighted: boolean;
+}
+
+const WordSelectable: React.FC<WordSelectableProps> = ({ word, onLongPress, isHighlighted }) => {
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const isLongPressActive = useRef(false);
+
+  const cleanWordValue = word.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?"'«»]/g, "").trim();
+
+  const handleStart = (e: React.MouseEvent | React.TouchEvent) => {
+    isLongPressActive.current = false;
+    timerRef.current = setTimeout(() => {
+      isLongPressActive.current = true;
+      if (cleanWordValue) {
+        onLongPress(cleanWordValue);
+      }
+    }, 550); // 550ms for press & hold
+  };
+
+  const handleEnd = (e: React.MouseEvent | React.TouchEvent) => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+    }
+    if (isLongPressActive.current) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+  };
+
+  const handleClick = (e: React.MouseEvent) => {
+    if (isLongPressActive.current) {
+      e.stopPropagation();
+      e.preventDefault();
+      return;
+    }
+  };
+
+  return (
+    <span
+      onMouseDown={handleStart}
+      onMouseUp={handleEnd}
+      onMouseLeave={handleEnd}
+      onTouchStart={handleStart}
+      onTouchEnd={handleEnd}
+      onClick={handleClick}
+      className={cn(
+        "inline-block rounded px-0.5 hover:bg-[#C5A059]/20 hover:text-white transition-all cursor-help select-none",
+        isHighlighted && "bg-[#C5A059]/40 text-white font-bold"
+      )}
+    >
+      {word}
+    </span>
+  );
+};
+
+interface InteractiveVerseTextProps {
+  text: string;
+  searchTerm: string;
+  onLongPressWord: (word: string) => void;
+}
+
+const InteractiveVerseText: React.FC<InteractiveVerseTextProps> = ({ text, searchTerm, onLongPressWord }) => {
+  if (!text) return null;
+  const parts = text.split(/(\s+)/);
+
+  return (
+    <>
+      {parts.map((part, index) => {
+        const isSpace = /^\s+$/.test(part);
+        if (isSpace) {
+          return <span key={index}>{part}</span>;
+        }
+
+        const cleanPart = part.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?"'«»]/g, "").trim().toLowerCase();
+        const cleanSearch = searchTerm.trim().toLowerCase();
+        const isHighlighted = cleanSearch ? cleanPart.includes(cleanSearch) : false;
+
+        return (
+          <WordSelectable
+            key={index}
+            word={part}
+            onLongPress={onLongPressWord}
+            isHighlighted={isHighlighted}
+          />
+        );
+      })}
+    </>
+  );
+};
+
 export default function Bible() {
   const location = useLocation();
   const [currentBook, setCurrentBook] = useState(location.state?.book || 'Gênesis');
@@ -40,6 +133,55 @@ export default function Bible() {
   const [fontSize, setFontSize] = useState(() => localStorage.getItem('bible-font-size') || 'text-xl');
   const [lineSpacing, setLineSpacing] = useState(() => localStorage.getItem('bible-line-spacing') || 'leading-[1.8]');
   const [showSettings, setShowSettings] = useState(false);
+
+  // Theological Dictionary State
+  const [dictInfo, setDictInfo] = useState<{
+    word: string;
+    language?: string;
+    transliteration?: string;
+    original_term?: string;
+    strong_number?: string;
+    definition?: string;
+    application?: string;
+  } | null>(null);
+  const [isSearchingDict, setIsSearchingDict] = useState(false);
+  const [dictError, setDictError] = useState<string | null>(null);
+  const [showDictModal, setShowDictModal] = useState(false);
+
+  const handleOpenDictionary = async (word: string, verseObj: any) => {
+    setIsSearchingDict(true);
+    setDictError(null);
+    setDictInfo({ word });
+    setShowDictModal(true);
+
+    try {
+      const response = await fetch("/api/dictionary", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          word,
+          verseText: verseObj.text,
+          book: currentBook,
+          chapter: currentChapter,
+          verse: verseObj.verse,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Não foi possível carregar a definição teológica. Verifique os limites da API ou tente mais tarde.");
+      }
+
+      const data = await response.json();
+      setDictInfo(data);
+    } catch (err: any) {
+      console.error("Dictionary error:", err);
+      setDictError(err.message || "Falha de conexão.");
+    } finally {
+      setIsSearchingDict(false);
+    }
+  };
 
   useEffect(() => {
     localStorage.setItem('bible-font-size', fontSize);
@@ -361,6 +503,11 @@ export default function Bible() {
         </div>
       </div>
 
+      <div className="bg-[#1D222B] border border-white/5 rounded-xl px-4 py-3 flex items-start sm:items-center gap-2 text-xs md:text-sm text-[#94A3B8] animate-in fade-in duration-300">
+        <span className="text-[#C5A059] font-bold shrink-0">💡 Dicionário Teológico:</span>
+        <span>Toque e segure (clique longo) em qualquer termo para revelar a definição, o significado em grego ou hebraico e aplicações teológicas.</span>
+      </div>
+
       <div className={`space-y-4 font-serif text-[#E2E8F0] transition-all duration-300 ${fontSize} ${lineSpacing}`}>
         {verses ? verses.map((verse) => {
           const isActive = audio.currentBook === currentBook && audio.currentChapter === currentChapter && audio.currentVerse === verse.verse;
@@ -381,12 +528,16 @@ export default function Bible() {
                 onClick={() => toggleVerseRead(verse.verse)}
               >
                 <sup className={cn(
-                  "text-xs font-sans mr-2 align-super",
+                  "text-xs font-sans mr-2 align-super select-none shrink-0",
                   isActive || isRead ? "text-[#C5A059]" : "text-[#94A3B8]"
                 )}>
                   {verse.verse}
                 </sup>
-                <span>{highlightText(verse.text, searchTerm)}</span>
+                <InteractiveVerseText 
+                  text={verse.text} 
+                  searchTerm={searchTerm} 
+                  onLongPressWord={(word) => handleOpenDictionary(word, verse)} 
+                />
               </div>
               
               <div className={cn(
@@ -596,6 +747,126 @@ export default function Bible() {
                 className="w-full py-3 rounded-xl font-medium bg-[#C5A059] text-white hover:bg-[#D4AF68] transition-colors"
               >
                 Concluir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Theological Dictionary Modal */}
+      {showDictModal && dictInfo && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200"
+          onClick={() => setShowDictModal(false)}
+        >
+          <div 
+            className="bg-[#1C2026] border border-white/10 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200 text-left"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b border-white/5 bg-[#08090B]">
+              <h3 className="font-serif font-semibold text-[#E2E8F0] flex items-center gap-2">
+                <Book className="w-5 h-5 text-[#C5A059]" />
+                Dicionário Teológico
+              </h3>
+              <button 
+                onClick={() => setShowDictModal(false)}
+                className="text-[#94A3B8] hover:text-white transition-colors p-1"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Content body */}
+            <div className="p-6 space-y-6 overflow-y-auto max-h-[70vh] custom-scrollbar">
+              {isSearchingDict ? (
+                <div className="flex flex-col items-center justify-center py-12 space-y-4">
+                  <Loader2 className="w-10 h-10 text-[#C5A059] animate-spin" />
+                  <p className="text-sm text-[#94A3B8] text-center font-sans max-w-xs">
+                    Invocando as definições de Hermes para a palavra <span className="text-[#C5A059] font-medium font-serif">"{dictInfo.word}"</span>...
+                  </p>
+                </div>
+              ) : dictError ? (
+                <div className="text-center py-8 space-y-4">
+                  <div className="text-red-400 font-sans text-sm font-semibold">
+                    Ops! Problema ao contatar Hermes.
+                  </div>
+                  <p className="text-xs text-[#94A3B8] max-w-sm mx-auto">
+                    {dictError}
+                  </p>
+                  <button
+                    onClick={() => handleOpenDictionary(dictInfo.word, { text: "" })}
+                    className="px-4 py-2 mt-4 bg-[#C5A059]/25 hover:bg-[#C5A059]/35 text-[#C5A059] text-xs font-bold rounded-full transition-colors font-sans mx-auto block"
+                  >
+                    Tentar Novamente
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {/* Title and stats */}
+                  <div className="border-b border-white/5 pb-4">
+                    <h4 className="text-2xl font-serif font-bold text-[#E2E8F0] tracking-tight capitalize mb-2">
+                      {dictInfo.word}
+                    </h4>
+                    
+                    <div className="flex flex-wrap gap-2 text-xs font-sans mt-2">
+                      {dictInfo.language && (
+                        <span className="px-2.5 py-1 rounded bg-[#C5A059]/15 text-[#C5A059] font-semibold">
+                          {dictInfo.language}
+                        </span>
+                      )}
+                      {dictInfo.original_term && (
+                        <span className="px-2.5 py-1 rounded bg-white/5 text-[#E2E8F0] font-serif font-bold">
+                          {dictInfo.original_term}
+                        </span>
+                      )}
+                      {dictInfo.transliteration && (
+                        <span className="px-2.5 py-1 rounded bg-white/5 text-[#94A3B8] italic">
+                          Transliteração: {dictInfo.transliteration}
+                        </span>
+                      )}
+                      {dictInfo.strong_number && (
+                        <span className="px-2.5 py-1 rounded bg-[#C5A059]/10 text-[#C5A059]/80 font-mono">
+                          Strong: {dictInfo.strong_number}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Theological definition */}
+                  <div className="space-y-2">
+                    <h5 className="text-xs font-semibold uppercase tracking-wider text-[#94A3B8] font-sans flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#C5A059]" />
+                      Definição Teológica
+                    </h5>
+                    <p className="text-[#E2E8F0] text-sm leading-relaxed font-serif bg-[#08090B] p-4 rounded-xl border border-white/5">
+                      {dictInfo.definition}
+                    </p>
+                  </div>
+
+                  {/* Spiritual application */}
+                  {dictInfo.application && (
+                    <div className="space-y-2">
+                      <h5 className="text-xs font-semibold uppercase tracking-wider text-[#94A3B8] font-sans flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#C5A059]" />
+                        Aplicação Prática e Vida Cristã
+                      </h5>
+                      <p className="text-[#92A3B8] text-sm leading-relaxed italic bg-[#C5A059]/5 p-4 rounded-xl border border-[#C5A059]/10">
+                        {dictInfo.application}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 border-t border-white/5 bg-[#08090B] flex justify-end">
+              <button 
+                onClick={() => setShowDictModal(false)}
+                className="px-6 py-2 rounded-xl font-medium bg-[#C5A059] text-[#0F1115] hover:bg-[#D4AF68] transition-colors text-sm font-sans"
+              >
+                Fechar
               </button>
             </div>
           </div>

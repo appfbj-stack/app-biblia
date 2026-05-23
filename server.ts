@@ -32,6 +32,95 @@ async function startServer() {
     }
   });
 
+  app.post("/api/dictionary", async (req, res) => {
+    try {
+      const { word, verseText, book, chapter, verse } = req.body;
+      if (!word) {
+        return res.status(400).json({ error: "Word is required" });
+      }
+
+      const openRouterKey = process.env.OPENROUTER_API_KEY;
+      const geminiKey = process.env.GEMINI_API_KEY;
+
+      const SYSTEM_INSTRUCTION_DICT = `Você é um dicionário teológico e bíblico erudito e preciso chamado Hermes.
+Você analisa a palavra solicitada no contexto do versículo bíblico fornecido e do livro correspondente.
+Se o livro for do Antigo Testamento, seu significado original deve ser buscado no Hebraico ou Aramaico.
+Se o livro for do Novo Testamento, seu significado original deve ser buscado no Grego (Koiné).
+
+Forneça sua resposta obrigatoriamente em formato de objeto JSON válido, com a seguinte estrutura:
+{
+  "word": "Palavra limpa em português",
+  "language": "Idioma original (Hebraico / Grego / Aramaico)",
+  "transliteration": "Transliteração (ex: logos / bereshit)",
+  "original_term": "Termo no alfabeto oficial original (ex: λόγος ou בְּרֵaשִׁית)",
+  "strong_number": "Número de Strong se conhecido (tipo G3056, H7225)",
+  "definition": "Definição teológica detalhada no contexto do versículo",
+  "application": "Aplicação espiritual prática para a vida cristã hoje"
+}`;
+
+      const prompt = `Analise a palavra "${word}" presente no versículo:
+Livro: ${book}
+Capítulo: ${chapter}
+Versículo: ${verse}
+Texto: "${verseText}"
+
+Retorne estritamente o objeto JSON contendo as informações originais e a definição teológica.`;
+
+      if (openRouterKey) {
+        const messages = [
+          { role: "system", content: SYSTEM_INSTRUCTION_DICT },
+          { role: "user", content: prompt }
+        ];
+
+        const openRouterResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${openRouterKey}`,
+            "HTTP-Referer": process.env.APP_URL || "https://ai.studio",
+            "X-Title": "Hermes Bible"
+          },
+          body: JSON.stringify({
+            model: "deepseek/deepseek-chat:free",
+            messages: messages,
+            response_format: { type: "json_object" },
+            temperature: 0.3,
+          })
+        });
+
+        if (!openRouterResponse.ok) {
+          const errText = await openRouterResponse.text();
+          throw new Error(`OpenRouter API Error: ${openRouterResponse.status} ${errText}`);
+        }
+
+        const data = await openRouterResponse.json();
+        const text = data.choices?.[0]?.message?.content || "{}";
+        res.json(JSON.parse(text));
+
+      } else if (geminiKey) {
+        const ai = new GoogleGenAI({ apiKey: geminiKey });
+
+        const response = await ai.models.generateContent({
+          model: "gemini-3.1-pro-preview",
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          config: {
+            systemInstruction: SYSTEM_INSTRUCTION_DICT,
+            temperature: 0.3,
+            responseMimeType: "application/json"
+          }
+        });
+
+        const text = response.text || "{}";
+        res.json(JSON.parse(text));
+      } else {
+        throw new Error("Neither OPENROUTER_API_KEY nor GEMINI_API_KEY environment variable is configured.");
+      }
+    } catch (err: any) {
+      console.error("Error in dictionary api:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   app.post("/api/chat", async (req, res) => {
     try {
       const { message, history, model } = req.body;
