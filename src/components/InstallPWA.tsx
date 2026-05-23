@@ -7,6 +7,13 @@ export function InstallPWA() {
   const [isIOS, setIsIOS] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
   const [showHelpPrompt, setShowHelpPrompt] = useState(false);
+  const [isIframe] = useState(() => {
+    try {
+      return window.self !== window.top;
+    } catch (e) {
+      return true;
+    }
+  });
 
   useEffect(() => {
     // Check if already installed
@@ -34,6 +41,11 @@ export function InstallPWA() {
 
   const onClick = (evt: React.MouseEvent<HTMLButtonElement>) => {
     evt.preventDefault();
+    if (isIframe) {
+      // Direct breakout to trigger native browser installer in full tab
+      window.open(window.location.href, "_blank");
+      return;
+    }
     if (promptInstall) {
       promptInstall.prompt();
       promptInstall.userChoice.then((choiceResult: { outcome: string }) => {

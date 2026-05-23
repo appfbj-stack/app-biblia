@@ -1,12 +1,20 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, BookOpen, MessageSquare, Menu } from 'lucide-react';
+import { Home, BookOpen, MessageSquare } from 'lucide-react';
 import { cn } from '../lib/utils';
 import Player from './Player';
+import { InstallPWA } from './InstallPWA';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [isIframe] = useState(() => {
+    try {
+      return window.self !== window.top;
+    } catch (e) {
+      return true;
+    }
+  });
 
   const navItems = [
     { icon: Home, label: 'Início', path: '/' },
@@ -30,7 +38,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 to={item.path}
                 title={item.label}
                 className={cn(
-                  "w-11 h-11 rounded-xl flex items-center justify-center transition-colors",
+                   "w-11 h-11 rounded-xl flex items-center justify-center transition-colors",
                   isActive 
                     ? "bg-[#C5A059]/15 text-[#C5A059]" 
                     : "text-[#94A3B8] hover:text-[#E2E8F0] hover:bg-white/5"
@@ -45,12 +53,31 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 bg-[#0F1115]">
+        {/* Banner de aviso para Iframe (AI Studio Preview) */}
+        {isIframe && (
+          <div className="bg-[#C5A059]/10 border-b border-[#C5A059]/20 px-4 py-2 text-center text-xs md:text-sm text-[#E2E8F0] font-sans flex items-center justify-center gap-2 shrink-0 select-none animate-in fade-in duration-300">
+            <span className="flex h-2 w-2 relative">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#C5A059] opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-[#C5A059]"></span>
+            </span>
+            <span className="text-[#94A3B8]">Para ouvir áudio e instalar direto no celular:</span>
+            <a 
+              href={window.location.href} 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="underline font-bold text-[#C5A059] hover:text-[#D4AF68] transition-colors"
+            >
+              Abra em Nova Aba ↗
+            </a>
+          </div>
+        )}
+
         {/* Mobile Header */}
         <header className="md:hidden flex items-center justify-between p-4 bg-[#16191E] border-b border-white/5 text-[#E2E8F0]">
           <h1 className="text-lg font-bold text-[#C5A059]">Hermes</h1>
-          <button className="p-2" onClick={() => setMobileOpen(!mobileOpen)}>
-            <Menu className="w-5 h-5 text-[#94A3B8]" />
-          </button>
+          <div className="flex items-center gap-2">
+            <InstallPWA />
+          </div>
         </header>
 
         {/* Scrollable Content */}

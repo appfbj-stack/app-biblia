@@ -391,7 +391,7 @@ export default function Bible() {
               
               <div className={cn(
                 "flex flex-col sm:flex-row items-center gap-1 sm:gap-2 shrink-0 mt-1 transition-opacity",
-                hasNote || isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                hasNote || isActive ? "opacity-100" : "opacity-75 sm:opacity-0 sm:group-hover:opacity-100"
               )}>
                 <button
                   onClick={(e) => {
