@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Send, User, Bot, Loader2 } from "lucide-react";
+import { Send, User, Bot, Loader2, Mic, MicOff } from "lucide-react";
 import { cn } from "../lib/utils";
 import { sendMessageToHermes } from "../services/hermes";
 
@@ -10,7 +10,72 @@ export default function Chat() {
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef<any>(null);
   const endRef = useRef<HTMLDivElement>(null);
+
+  const toggleListening = () => {
+    const SpeechRecognitionAPI = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognitionAPI) {
+      alert("O seu navegador não possui suporte para reconhecimento de voz.");
+      return;
+    }
+
+    if (isListening) {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+      setIsListening(false);
+      return;
+    }
+
+    try {
+      const rec = new SpeechRecognitionAPI();
+      rec.continuous = false;
+      rec.interimResults = false;
+      rec.lang = 'pt-BR';
+
+      rec.onstart = () => {
+        setIsListening(true);
+      };
+
+      rec.onend = () => {
+        setIsListening(false);
+      };
+
+      rec.onerror = (event: any) => {
+        console.error("Speech recognition error:", event.error);
+        setIsListening(false);
+        if (event.error === 'not-allowed') {
+          alert("Permissão para microfone foi negada. Por favor, ative a permissão de áudio para usar comandos de voz.");
+        }
+      };
+
+      rec.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        if (transcript) {
+          setInput((prev) => {
+            const trimmed = prev.trim();
+            return trimmed ? `${trimmed} ${transcript}` : transcript;
+          });
+        }
+      };
+
+      recognitionRef.current = rec;
+      rec.start();
+    } catch (err) {
+      console.error("Erro ao iniciar reconhecimento de voz:", err);
+      setIsListening(false);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+    };
+  }, []);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -105,13 +170,31 @@ export default function Chat() {
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Pergunte ao Hermes..."
-            className="w-full bg-white/5 border border-white/10 rounded-full pl-5 pr-12 py-3 text-sm text-[#E2E8F0] focus:outline-none focus:ring-2 focus:ring-[#C5A059]/50 focus:border-[#C5A059]/50 transition-all placeholder:text-[#94A3B8]"
+            placeholder={isListening ? "Ouvindo... Fale agora" : "Pergunte ao Hermes..."}
+            className={cn(
+              "w-full bg-white/5 border rounded-full pl-5 pr-24 py-3 text-sm text-[#E2E8F0] focus:outline-none focus:ring-2 transition-all placeholder:text-[#94A3B8]",
+              isListening 
+                ? "border-red-500/50 focus:ring-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.2)] bg-red-500/5 font-medium" 
+                : "border-white/10 focus:ring-[#C5A059]/50 focus:border-[#C5A059]/50"
+            )}
           />
+          <button
+            type="button"
+            onClick={toggleListening}
+            className={cn(
+              "absolute right-12 p-2 rounded-full transition-all flex items-center justify-center cursor-pointer",
+              isListening 
+                ? "bg-red-500/20 text-red-400 animate-pulse border border-red-500/30" 
+                : "text-[#94A3B8] hover:text-[#C5A059] hover:bg-white/5"
+            )}
+            title={isListening ? "Parar de ouvir" : "Falar pergunta (Comando de voz)"}
+          >
+            {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+          </button>
           <button 
             type="submit" 
             disabled={!input.trim() || isLoading}
-            className="absolute right-2 p-2 bg-[#C5A059] text-[#0F1115] rounded-full hover:bg-[#C5A059]/90 transition-colors disabled:opacity-50 disabled:hover:bg-[#C5A059]"
+            className="absolute right-2 p-2 bg-[#C5A059] text-[#0F1115] rounded-full hover:bg-[#C5A059]/90 transition-colors disabled:opacity-50 disabled:hover:bg-[#C5A059] cursor-pointer"
           >
             <Send className="w-4 h-4" />
           </button>

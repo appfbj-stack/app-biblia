@@ -8,6 +8,7 @@ import Layout from './components/Layout';
 import Home from './pages/Home';
 import Bible from './pages/Bible';
 import Chat from './pages/Chat';
+import Sermons from './pages/Sermons';
 import { useEffect, useState } from 'react';
 import { seedDatabase } from './database/seed';
 
@@ -24,6 +25,53 @@ export default function App() {
     window.addEventListener('seeding-status', handleSeedingStatus);
     
     seedDatabase().catch(console.error);
+
+    // Auto-generate PNG icons from SVG for full mobile PWA installability helper
+    const generatePWAIcons = async () => {
+      try {
+        const svgImage = new Image();
+        svgImage.src = "/icon.svg";
+        svgImage.onload = async () => {
+          // 192x192 PNG
+          const canvas192 = document.createElement("canvas");
+          canvas192.width = 192;
+          canvas192.height = 192;
+          const ctx192 = canvas192.getContext("2d");
+          if (ctx192) {
+            ctx192.fillStyle = "#08090B";
+            ctx192.fillRect(0, 0, 192, 192);
+            ctx192.drawImage(svgImage, 0, 0, 192, 192);
+          }
+          const data192 = canvas192.toDataURL("image/png");
+
+          // 512x512 PNG
+          const canvas512 = document.createElement("canvas");
+          canvas512.width = 512;
+          canvas512.height = 512;
+          const ctx512 = canvas512.getContext("2d");
+          if (ctx512) {
+            ctx512.fillStyle = "#08090B";
+            ctx512.fillRect(0, 0, 512, 512);
+            ctx512.drawImage(svgImage, 0, 0, 512, 512);
+          }
+          const data512 = canvas512.toDataURL("image/png");
+
+          // Save PNG files to server /public/
+          await fetch("/api/save-pwa-icons", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              icon192: data192,
+              icon512: data512,
+            }),
+          });
+        };
+      } catch (err) {
+        console.error("Failed to generate PWA PNG icons:", err);
+      }
+    };
+
+    generatePWAIcons();
 
     return () => {
       window.removeEventListener('seeding-status', handleSeedingStatus);
@@ -71,6 +119,7 @@ export default function App() {
             <Route path="/" element={<Home />} />
             <Route path="/bible" element={<Bible />} />
             <Route path="/chat" element={<Chat />} />
+            <Route path="/sermons" element={<Sermons />} />
           </Routes>
         </Layout>
       </Router>

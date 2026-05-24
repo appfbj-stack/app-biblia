@@ -1,4 +1,5 @@
 import { db } from './db';
+import { safeLocalStorage, safeSessionStorage } from '../lib/storage';
 
 const BIBLE_BOOKS = [
   // Velho Testamento
@@ -71,16 +72,90 @@ const BIBLE_BOOKS = [
   { name: 'Apocalipse', testament: 'NT', chapters: 22 }
 ] as const;
 
-export async function seedDatabase() {
-  const booksCount = await db.books.count();
-  if (booksCount < 66) {
-    await db.books.clear();
-    await db.books.bulkAdd([...BIBLE_BOOKS]);
+async function handleDatabaseError(contextMsg: string, originalError: any) {
+  console.error(`${contextMsg}`, originalError);
+  
+  const now = Date.now();
+  const lastReloadStr = safeLocalStorage.getItem('hermes-db-reload-time');
+  const reloadCountStr = safeLocalStorage.getItem('hermes-db-reload-count');
+  
+  const lastReload = lastReloadStr ? parseInt(lastReloadStr, 10) : 0;
+  let reloadCount = reloadCountStr ? parseInt(reloadCountStr, 10) : 0;
+  
+  // Reset reload count if more than 30 seconds have passed since last reload
+  if (now - lastReload > 30000) {
+    reloadCount = 0;
+  }
+  
+  if (reloadCount >= 3) {
+    console.warn("Infinite reload loop prevented. Displaying user-facing offline/IndexedDB error.");
+    window.dispatchEvent(new CustomEvent('seeding-status', {
+      detail: {
+        loading: false,
+        error: "Falha de Armazenamento Local: O navegador bloqueou o acesso ao IndexedDB local. Se estiver no modo de navegação anônima, use o modo normal ou limpe os dados do navegador."
+      }
+    }));
+    return;
+  }
+  
+  try {
+    await db.close();
+  } catch (closeErr) {
+    console.warn("Could not close database connection gracefully:", closeErr);
+  }
+  
+  try {
+    if (window.indexedDB) {
+      window.indexedDB.deleteDatabase('HermesBible');
+    }
+    const DexieClass = db.constructor as any;
+    await DexieClass.delete('HermesBible');
+    console.log("Database deleted successfully for recreation.");
+  } catch (deleteErr) {
+    console.error("Failed to delete database during error recovery:", deleteErr);
+  }
+  
+  try {
+    safeSessionStorage.setItem('hermes-use-fake-idb', 'true');
+  } catch (sessErr) {
+    console.warn("Could not write to sessionStorage:", sessErr);
   }
 
-  const versesCount = await db.verses.count();
-  if (versesCount < 31000) {
-    try {
+  try {
+    safeLocalStorage.setItem('hermes-db-reload-time', String(now));
+    safeLocalStorage.setItem('hermes-db-reload-count', String(reloadCount + 1));
+  } catch (storeErr) {
+    console.warn("Could not write reload state to localStorage:", storeErr);
+  }
+  
+  console.log("Reloading window to retry database creation with polyfilled memory DB...");
+  window.location.reload();
+}
+
+export async function seedDatabase() {
+  try {
+    await db.open();
+  } catch (err) {
+    await handleDatabaseError("Dexie database open failed", err);
+    return;
+  }
+
+  let booksCount = 0;
+  try {
+    booksCount = await db.books.count();
+  } catch (err) {
+    await handleDatabaseError("Dexie books count failed", err);
+    return;
+  }
+
+  try {
+    if (booksCount < 66) {
+      await db.books.clear();
+      await db.books.bulkAdd([...BIBLE_BOOKS]);
+    }
+
+    const versesCount = await db.verses.count();
+    if (versesCount < 31000) {
       window.dispatchEvent(new CustomEvent('seeding-status', { detail: { loading: true, message: 'Baixando a Bíblia...' } }));
       console.log("Downloading full Bible...");
       // Try local proxy first to avoid adblockers/network blocks on mobile
@@ -129,25 +204,25 @@ export async function seedDatabase() {
       
       window.dispatchEvent(new CustomEvent('seeding-status', { detail: { loading: false } }));
       console.log("Bible seeded successfully!");
-    } catch(e) {
-      window.dispatchEvent(new CustomEvent('seeding-status', { detail: { loading: false, error: 'Falha ao baixar a Bíblia. Verifique sua conexão.' } }));
-      console.error("Failed to seed verses", e);
     }
-  }
 
-  const chatsCount = await db.chats.count();
-  if (chatsCount === 0) {
-    // Add an initial chat
-    const chatId = await db.chats.add({
-      title: 'Boas-vindas',
-      created_at: new Date().toISOString()
-    });
+    const chatsCount = await db.chats.count();
+    if (chatsCount === 0) {
+      // Add an initial chat
+      const chatId = await db.chats.add({
+        title: 'Boas-vindas',
+        created_at: new Date().toISOString()
+      });
 
-    await db.chat_messages.add({
-      chat_id: chatId,
-      role: 'assistant',
-      content: 'Graça e paz! Eu sou Hermes, seu assistente bíblico. Como posso te ajudar a mergulhar nas Escrituras hoje?',
-      created_at: new Date().toISOString()
-    });
+      await db.chat_messages.add({
+        chat_id: chatId,
+        role: 'assistant',
+        content: 'Graça e paz! Eu sou Hermes, seu assistente bíblico. Como posso te ajudar a mergulhar nas Escrituras hoje?',
+        created_at: new Date().toISOString()
+      });
+    }
+  } catch (err) {
+    await handleDatabaseError("Dexie operations failed", err);
+    return;
   }
 }

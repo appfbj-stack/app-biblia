@@ -2,8 +2,9 @@ import React, { useState, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "../database/db";
+import { safeLocalStorage } from "../lib/storage";
 import { useAudio } from "../contexts/AudioContext";
-import { Play, Pause, Volume2, ChevronDown, CheckCircle2, Circle, StickyNote, X, Save, Settings2, Type, AlignLeft, Share2, Search, Loader2, Book, Languages, Highlighter } from "lucide-react";
+import { Play, Pause, Volume2, ChevronDown, CheckCircle2, Circle, StickyNote, X, Save, Settings2, Type, AlignLeft, Share2, Search, Loader2, Book, Languages, Highlighter, GitMerge, Link2 } from "lucide-react";
 import { cn } from "../lib/utils";
 
 const highlightText = (text: string, search: string) => {
@@ -128,6 +129,75 @@ const HIGHLIGHT_STYLES: Record<string, string> = {
   purple: "bg-purple-500/10 border-l-2 border-purple-500 rounded-l-none",
 };
 
+const FALLBACK_BIBLE_BOOKS = [
+  { id: 1, name: "Gênesis", chapters: 50 },
+  { id: 2, name: "Êxodo", chapters: 40 },
+  { id: 3, name: "Levítico", chapters: 27 },
+  { id: 4, name: "Números", chapters: 36 },
+  { id: 5, name: "Deuteronômio", chapters: 34 },
+  { id: 6, name: "Josué", chapters: 24 },
+  { id: 7, name: "Juízes", chapters: 21 },
+  { id: 8, name: "Rute", chapters: 4 },
+  { id: 9, name: "1 Samuel", chapters: 31 },
+  { id: 10, name: "2 Samuel", chapters: 24 },
+  { id: 11, name: "1 Reis", chapters: 22 },
+  { id: 12, name: "2 Reis", chapters: 25 },
+  { id: 13, name: "1 Crônicas", chapters: 29 },
+  { id: 14, name: "2 Crônicas", chapters: 36 },
+  { id: 15, name: "Esdras", chapters: 10 },
+  { id: 16, name: "Neemias", chapters: 13 },
+  { id: 17, name: "Ester", chapters: 10 },
+  { id: 18, name: "Jó", chapters: 42 },
+  { id: 19, name: "Salmos", chapters: 150 },
+  { id: 20, name: "Provérbios", chapters: 31 },
+  { id: 21, name: "Eclesiastes", chapters: 12 },
+  { id: 22, name: "Cânticos", chapters: 8 },
+  { id: 23, name: "Isaías", chapters: 66 },
+  { id: 24, name: "Jeremias", chapters: 52 },
+  { id: 25, name: "Lamentações", chapters: 5 },
+  { id: 26, name: "Ezequiel", chapters: 48 },
+  { id: 27, name: "Daniel", chapters: 12 },
+  { id: 28, name: "Oséias", chapters: 14 },
+  { id: 29, name: "Joel", chapters: 3 },
+  { id: 30, name: "Amós", chapters: 9 },
+  { id: 31, name: "Obadias", chapters: 1 },
+  { id: 32, name: "Jonas", chapters: 4 },
+  { id: 33, name: "Miquéias", chapters: 7 },
+  { id: 34, name: "Naum", chapters: 3 },
+  { id: 35, name: "Habacuque", chapters: 3 },
+  { id: 36, name: "Sofonias", chapters: 3 },
+  { id: 37, name: "Ageu", chapters: 2 },
+  { id: 38, name: "Zacarias", chapters: 14 },
+  { id: 39, name: "Malaquias", chapters: 4 },
+  { id: 40, name: "Mateus", chapters: 28 },
+  { id: 41, name: "Marcos", chapters: 16 },
+  { id: 42, name: "Lucas", chapters: 24 },
+  { id: 43, name: "João", chapters: 21 },
+  { id: 44, name: "Atos", chapters: 28 },
+  { id: 45, name: "Romanos", chapters: 16 },
+  { id: 46, name: "1 Coríntios", chapters: 16 },
+  { id: 47, name: "2 Coríntios", chapters: 13 },
+  { id: 48, name: "Gálatas", chapters: 6 },
+  { id: 49, name: "Efésios", chapters: 6 },
+  { id: 50, name: "Filipenses", chapters: 4 },
+  { id: 51, name: "Colossenses", chapters: 4 },
+  { id: 52, name: "1 Tessalonicenses", chapters: 5 },
+  { id: 53, name: "2 Tessalonicenses", chapters: 3 },
+  { id: 54, name: "1 Timóteo", chapters: 6 },
+  { id: 55, name: "2 Timóteo", chapters: 4 },
+  { id: 56, name: "Tito", chapters: 3 },
+  { id: 57, name: "Filemom", chapters: 1 },
+  { id: 58, name: "Hebreus", chapters: 13 },
+  { id: 59, name: "Tiago", chapters: 5 },
+  { id: 60, name: "1 Pedro", chapters: 5 },
+  { id: 61, name: "2 Pedro", chapters: 3 },
+  { id: 62, name: "1 João", chapters: 5 },
+  { id: 63, name: "2 João", chapters: 1 },
+  { id: 64, name: "3 João", chapters: 1 },
+  { id: 65, name: "Judas", chapters: 1 },
+  { id: 66, name: "Apocalipse", chapters: 22 }
+];
+
 export default function Bible() {
   const location = useLocation();
   const [currentBook, setCurrentBook] = useState(location.state?.book || 'Gênesis');
@@ -138,9 +208,111 @@ export default function Bible() {
   const [noteContent, setNoteContent] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   
-  const [fontSize, setFontSize] = useState(() => localStorage.getItem('bible-font-size') || 'text-xl');
-  const [lineSpacing, setLineSpacing] = useState(() => localStorage.getItem('bible-line-spacing') || 'leading-[1.8]');
+  const [fontSize, setFontSize] = useState(() => safeLocalStorage.getItem('bible-font-size') || 'text-xl');
+  const [lineSpacing, setLineSpacing] = useState(() => safeLocalStorage.getItem('bible-line-spacing') || 'leading-[1.8]');
   const [showSettings, setShowSettings] = useState(false);
+
+  // Cross References State
+  const [chapterCrossRefs, setChapterCrossRefs] = useState<any[]>([]);
+  const [selectedVerseCrossRefs, setSelectedVerseCrossRefs] = useState<any[]>([]);
+  const [activeCrossRefVerse, setActiveCrossRefVerse] = useState<number | null>(null);
+  const [isFetchingCrossRefs, setIsFetchingCrossRefs] = useState(false);
+  const [crossRefsError, setCrossRefsError] = useState<string | null>(null);
+
+  const fetchChapterCrossRefs = async (bookName: string, chap: number) => {
+    setIsFetchingCrossRefs(true);
+    setCrossRefsError(null);
+    try {
+      const response = await fetch("/api/cross-references", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ book: bookName, chapter: chap }),
+      });
+      if (!response.ok) {
+        throw new Error("Não foi possível carregar as referências cruzadas.");
+      }
+      const data = await response.json();
+      setChapterCrossRefs(data.references || []);
+    } catch (e: any) {
+      console.error("Error fetching chapter cross-references", e);
+      setCrossRefsError("Erro de conexão ao carregar referências cruzadas.");
+    } finally {
+      setIsFetchingCrossRefs(false);
+    }
+  };
+
+  const fetchVerseCrossRefs = async (verseNum: number) => {
+    setIsFetchingCrossRefs(true);
+    setCrossRefsError(null);
+    setActiveCrossRefVerse(verseNum);
+    setSelectedVerseCrossRefs([]);
+    
+    setTimeout(() => {
+      const refsEl = document.getElementById("deep-study-cross-refs");
+      if (refsEl) {
+        refsEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 100);
+
+    try {
+      const response = await fetch("/api/cross-references", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ book: currentBook, chapter: currentChapter, verse: verseNum }),
+      });
+      if (!response.ok) {
+        throw new Error("Não foi possível carregar as referências.");
+      }
+      const data = await response.json();
+      setSelectedVerseCrossRefs(data.references || []);
+    } catch (e: any) {
+      console.error("Error fetching verse cross-references", e);
+      setCrossRefsError("Erro de conexão ao buscar referências deste versículo.");
+    } finally {
+      setIsFetchingCrossRefs(false);
+    }
+  };
+
+  const parseReferenceAndNavigate = (refStr: string) => {
+    const displayBooksWithFallback = books && books.length > 0 ? books : FALLBACK_BIBLE_BOOKS;
+    const sortedBooks = [...displayBooksWithFallback].sort((a, b) => b.name.length - a.name.length);
+    
+    const cleanRef = refStr.trim();
+    for (const b of sortedBooks) {
+      if (cleanRef.toLowerCase().startsWith(b.name.toLowerCase())) {
+        const remaining = cleanRef.substring(b.name.length).trim();
+        const numMatch = remaining.match(/^(\d+)(?:\s*[:,\s]\s*(\d+))?/);
+        if (numMatch) {
+          const chapNum = parseInt(numMatch[1], 10);
+          const verseNum = numMatch[2] ? parseInt(numMatch[2], 10) : null;
+          
+          setCurrentBook(b.name);
+          setCurrentChapter(chapNum);
+          
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+          
+          if (verseNum) {
+            setTimeout(() => {
+              const verseEl = document.getElementById(`verse-${verseNum}`);
+              if (verseEl) {
+                verseEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }
+            }, 500);
+          }
+          return true;
+        }
+      }
+    }
+    return false;
+  };
+
+  useEffect(() => {
+    if (currentBook && currentChapter) {
+      fetchChapterCrossRefs(currentBook, currentChapter);
+      setActiveCrossRefVerse(null);
+      setSelectedVerseCrossRefs([]);
+    }
+  }, [currentBook, currentChapter]);
 
   // Theological Dictionary State
   const [dictInfo, setDictInfo] = useState<{
@@ -155,6 +327,7 @@ export default function Bible() {
   const [isSearchingDict, setIsSearchingDict] = useState(false);
   const [dictError, setDictError] = useState<string | null>(null);
   const [showDictModal, setShowDictModal] = useState(false);
+  const [showDictBanner, setShowDictBanner] = useState(() => safeLocalStorage.getItem('hide-dict-banner') !== 'true');
 
   const handleOpenDictionary = async (word: string, verseObj: any) => {
     setIsSearchingDict(true);
@@ -304,11 +477,19 @@ export default function Bible() {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('bible-font-size', fontSize);
+    try {
+      safeLocalStorage.setItem('bible-font-size', fontSize);
+    } catch (e) {
+      console.warn("Failed to save font size to storage", e);
+    }
   }, [fontSize]);
 
   useEffect(() => {
-    localStorage.setItem('bible-line-spacing', lineSpacing);
+    try {
+      safeLocalStorage.setItem('bible-line-spacing', lineSpacing);
+    } catch (e) {
+      console.warn("Failed to save line spacing to storage", e);
+    }
   }, [lineSpacing]);
 
   useEffect(() => {
@@ -334,16 +515,17 @@ export default function Bible() {
   }, [currentBook, currentChapter]);
   
   const books = useLiveQuery(() => db.books.toArray(), []);
+  const displayBooks = (books && books.length > 0) ? books : FALLBACK_BIBLE_BOOKS;
   const audio = useAudio();
 
   useEffect(() => {
-    if (books && books.length > 0) {
-      const foundBook = books.find(b => b.name === currentBook);
+    if (displayBooks && displayBooks.length > 0) {
+      const foundBook = displayBooks.find(b => b.name === currentBook);
       if (foundBook) {
         setCurrentBookMaxChapters(foundBook.chapters);
       }
     }
-  }, [books, currentBook]);
+  }, [displayBooks, currentBook]);
 
   const verses = useLiveQuery(
     () => db.verses.where({ book_name: currentBook, chapter: currentChapter }).toArray(),
@@ -548,7 +730,7 @@ export default function Bible() {
             onChange={handleBookChange}
             className="bg-transparent text-3xl font-serif font-semibold text-[#C5A059] focus:outline-none appearance-none text-center cursor-pointer group-hover:opacity-80 transition-opacity pr-8 relative z-10"
           >
-            {books?.map(book => (
+            {displayBooks?.map(book => (
               <option key={book.id} value={book.name} className="bg-[#1C2026] text-base">{book.name}</option>
             ))}
           </select>
@@ -628,10 +810,28 @@ export default function Bible() {
         </div>
       </div>
 
-      <div className="bg-[#1D222B] border border-white/5 rounded-xl px-4 py-3 flex items-start sm:items-center gap-2 text-xs md:text-sm text-[#94A3B8] animate-in fade-in duration-300">
-        <span className="text-[#C5A059] font-bold shrink-0">💡 Dicionário Teológico:</span>
-        <span>Toque e segure (clique longo) em qualquer termo para revelar a definição, o significado em grego ou hebraico e aplicações teológicas.</span>
-      </div>
+      {showDictBanner && (
+        <div className="bg-[#1D222B] border border-white/5 rounded-xl px-4 py-2.5 flex items-start sm:items-center justify-between gap-2 text-xs text-[#94A3B8] animate-in fade-in duration-300">
+          <div className="flex items-start sm:items-center gap-2">
+            <span className="text-[#C5A059] font-bold shrink-0">💡 Dicionário:</span>
+            <span>Clique longo em qualquer palavra para ver a explicação teológica.</span>
+          </div>
+          <button 
+            onClick={() => {
+              setShowDictBanner(false);
+              try {
+                safeLocalStorage.setItem('hide-dict-banner', 'true');
+              } catch (e) {
+                console.warn("Failed to save hide banner flag to storage", e);
+              }
+            }} 
+            className="text-[#94A3B8] hover:text-white transition-colors cursor-pointer p-0.5 ml-2 shrink-0"
+            title="Ocultar aviso"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
 
       <div className={`space-y-4 font-serif text-[#E2E8F0] transition-all duration-300 ${fontSize} ${lineSpacing}`}>
         {verses ? verses.map((verse) => {
@@ -644,6 +844,7 @@ export default function Bible() {
           return (
             <div 
               key={verse.id} 
+              id={`verse-${verse.verse}`}
               className={cn(
                 "group relative transition-all duration-300 p-2 -mx-2 rounded-lg flex gap-2 items-start",
                 highlightClass,
@@ -714,6 +915,21 @@ export default function Bible() {
                   title="Traduzir no Original"
                 >
                   <Languages className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    fetchVerseCrossRefs(verse.verse);
+                  }}
+                  className={cn(
+                    "p-2 rounded-full transition-all",
+                    activeCrossRefVerse === verse.verse
+                      ? "text-[#C5A059] bg-[#C5A059]/10 !opacity-100 animate-pulse"
+                      : "text-[#94A3B8] hover:text-[#C5A059] hover:bg-white/10"
+                  )}
+                  title="Ver Referências Cruzadas"
+                >
+                  <GitMerge className="w-4 h-4" />
                 </button>
                 <button
                   onClick={(e) => {
@@ -836,6 +1052,104 @@ export default function Bible() {
         >
           Próximo Capítulo &rarr;
         </button>
+      </div>
+
+      {/* Deep Study Cross References Section */}
+      <div id="deep-study-cross-refs" className="mt-12 bg-[#1C2026] border border-white/5 rounded-2xl p-6 space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/5 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-[#C5A059]/10 text-[#C5A059]">
+              <GitMerge className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-serif font-semibold text-lg text-[#E2E8F0]">
+                Estudo de Referências Cruzadas
+              </h3>
+              <p className="text-xs text-[#94A3B8]">
+                {activeCrossRefVerse 
+                  ? `Versículos correlacionados a ${currentBook} ${currentChapter}:${activeCrossRefVerse}` 
+                  : `Versículos correlacionados ao capítulo de ${currentBook} ${currentChapter}`}
+              </p>
+            </div>
+          </div>
+          
+          {activeCrossRefVerse && (
+            <button
+              onClick={() => {
+                setActiveCrossRefVerse(null);
+                setSelectedVerseCrossRefs([]);
+              }}
+              className="text-xs font-semibold px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 text-white transition-colors border border-white/10"
+            >
+              Exibir geral do capítulo
+            </button>
+          )}
+        </div>
+
+        {isFetchingCrossRefs ? (
+          <div className="flex flex-col items-center justify-center py-12 space-y-3">
+            <Loader2 className="w-8 h-8 text-[#C5A059] animate-spin" />
+            <p className="text-xs text-[#94A3B8]">
+              Consultando conexões teológicas do Hermes...
+            </p>
+          </div>
+        ) : crossRefsError ? (
+          <div className="text-center py-8 space-y-3">
+            <p className="text-sm text-red-500 font-medium">{crossRefsError}</p>
+            <button
+              onClick={() => activeCrossRefVerse ? fetchVerseCrossRefs(activeCrossRefVerse) : fetchChapterCrossRefs(currentBook, currentChapter)}
+              className="text-xs font-bold px-4 py-2 bg-[#C5A059] text-white rounded-full hover:bg-[#D4AF68] transition-colors"
+            >
+              Tentar Novamente
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {(activeCrossRefVerse ? selectedVerseCrossRefs : chapterCrossRefs).length > 0 ? (
+              <div className="grid grid-cols-1 gap-4">
+                {(activeCrossRefVerse ? selectedVerseCrossRefs : chapterCrossRefs).map((ref, idx) => (
+                  <div 
+                    key={idx} 
+                    className="bg-[#16191E] border border-white/5 hover:border-[#C5A059]/30 rounded-xl p-4 transition-all hover:translate-x-1"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-sans text-[#C5A059] bg-[#C5A059]/10 px-2 py-0.5 rounded font-semibold">
+                          Origem: Versículo {ref.source_verse_num}
+                        </span>
+                        <ChevronDown className="w-3.5 h-3.5 text-[#94A3B8] -rotate-90 pointer-events-none" />
+                        <span className="text-sm font-serif font-bold text-white selection:bg-[#C5A059]/30">
+                          {ref.target_reference}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => parseReferenceAndNavigate(ref.target_reference)}
+                        className="text-xs font-sans text-[#91A5C1] hover:text-[#C5A059] flex items-center gap-1 transition-all"
+                        title="Ir para este versículo"
+                      >
+                        <Link2 className="w-3.5 h-3.5" />
+                        Acessar
+                      </button>
+                    </div>
+                    <p className="text-[#E2E8F0] text-sm italic font-serif leading-relaxed mb-3 pl-3 border-l-2 border-[#C5A059]/40 select-text selection:bg-[#C5A059]/30">
+                      "{ref.target_text}"
+                    </p>
+                    <div className="bg-white/5 rounded-lg p-2.5 text-xs text-[#94A3B8] border border-white/5 font-sans">
+                      <span className="font-semibold text-[#C5A059] block mb-1">Conexão Teológica:</span>
+                      {ref.explanation}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-sm text-[#94A3B8] italic">
+                  Nenhuma referência encontrada para esta seleção no momento. Certifique-se de estar conectado à internet na primeira vez que abre o aplicativo para baixar referências.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Note Editor Overlay */}
@@ -977,98 +1291,98 @@ export default function Bible() {
           onClick={() => setShowDictModal(false)}
         >
           <div 
-            className="bg-[#1C2026] border border-white/10 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200 text-left"
+            className="bg-[#1C2026] border border-white/10 rounded-2xl w-full max-w-sm sm:max-w-md shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200 text-left"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b border-white/5 bg-[#08090B]">
-              <h3 className="font-serif font-semibold text-[#E2E8F0] flex items-center gap-2">
-                <Book className="w-5 h-5 text-[#C5A059]" />
+            <div className="flex items-center justify-between px-4 py-3 border-b border-white/5 bg-[#08090B]">
+              <h3 className="font-serif font-semibold text-sm text-[#E2E8F0] flex items-center gap-2">
+                <Book className="w-4 h-4 text-[#C5A059]" />
                 Dicionário Teológico
               </h3>
               <button 
                 onClick={() => setShowDictModal(false)}
                 className="text-[#94A3B8] hover:text-white transition-colors p-1"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
             {/* Content body */}
-            <div className="p-6 space-y-6 overflow-y-auto max-h-[70vh] custom-scrollbar">
+            <div className="p-4 space-y-4 overflow-y-auto max-h-[60vh] custom-scrollbar">
               {isSearchingDict ? (
-                <div className="flex flex-col items-center justify-center py-12 space-y-4">
-                  <Loader2 className="w-10 h-10 text-[#C5A059] animate-spin" />
-                  <p className="text-sm text-[#94A3B8] text-center font-sans max-w-xs">
-                    Invocando as definições de Hermes para a palavra <span className="text-[#C5A059] font-medium font-serif">"{dictInfo.word}"</span>...
+                <div className="flex flex-col items-center justify-center py-8 space-y-3">
+                  <Loader2 className="w-8 h-8 text-[#C5A059] animate-spin" />
+                  <p className="text-xs text-[#94A3B8] text-center font-sans max-w-xs">
+                    Invocando as definições de Hermes para <span className="text-[#C5A059] font-medium font-serif">"{dictInfo.word}"</span>...
                   </p>
                 </div>
               ) : dictError ? (
-                <div className="text-center py-8 space-y-4">
-                  <div className="text-red-400 font-sans text-sm font-semibold">
-                    Ops! Problema ao contatar Hermes.
+                <div className="text-center py-6 space-y-3">
+                  <div className="text-red-400 font-sans text-xs font-semibold">
+                    Ops! Problema ao obter a definição.
                   </div>
-                  <p className="text-xs text-[#94A3B8] max-w-sm mx-auto">
+                  <p className="text-[10px] text-[#94A3B8] max-w-xs mx-auto">
                     {dictError}
                   </p>
                   <button
                     onClick={() => handleOpenDictionary(dictInfo.word, { text: "" })}
-                    className="px-4 py-2 mt-4 bg-[#C5A059]/25 hover:bg-[#C5A059]/35 text-[#C5A059] text-xs font-bold rounded-full transition-colors font-sans mx-auto block"
+                    className="px-3 py-1.5 mt-2 bg-[#C5A059]/25 hover:bg-[#C5A059]/35 text-[#C5A059] text-[10px] font-bold rounded-full transition-colors font-sans mx-auto block"
                   >
                     Tentar Novamente
                   </button>
                 </div>
               ) : (
-                <div className="space-y-6">
+                <div className="space-y-4">
                   {/* Title and stats */}
-                  <div className="border-b border-white/5 pb-4">
-                    <h4 className="text-2xl font-serif font-bold text-[#E2E8F0] tracking-tight capitalize mb-2">
+                  <div className="border-b border-white/5 pb-3">
+                    <h4 className="text-lg font-serif font-bold text-[#E2E8F0] tracking-tight capitalize">
                       {dictInfo.word}
                     </h4>
                     
-                    <div className="flex flex-wrap gap-2 text-xs font-sans mt-2">
+                    <div className="flex flex-wrap gap-1 text-[10px] font-sans mt-1.5">
                       {dictInfo.language && (
-                        <span className="px-2.5 py-1 rounded bg-[#C5A059]/15 text-[#C5A059] font-semibold">
+                        <span className="px-1.5 py-0.5 rounded bg-[#C5A059]/15 text-[#C5A059] font-semibold">
                           {dictInfo.language}
                         </span>
                       )}
                       {dictInfo.original_term && (
-                        <span className="px-2.5 py-1 rounded bg-white/5 text-[#E2E8F0] font-serif font-bold">
+                        <span className="px-1.5 py-0.5 rounded bg-white/5 text-[#E2E8F0] font-serif font-bold">
                           {dictInfo.original_term}
                         </span>
                       )}
                       {dictInfo.transliteration && (
-                        <span className="px-2.5 py-1 rounded bg-white/5 text-[#94A3B8] italic">
-                          Transliteração: {dictInfo.transliteration}
+                        <span className="px-1.5 py-0.5 rounded bg-white/5 text-[#94A3B8] italic">
+                          {dictInfo.transliteration}
                         </span>
                       )}
                       {dictInfo.strong_number && (
-                        <span className="px-2.5 py-1 rounded bg-[#C5A059]/10 text-[#C5A059]/80 font-mono">
-                          Strong: {dictInfo.strong_number}
+                        <span className="px-1.5 py-0.5 rounded bg-[#C5A059]/10 text-[#C5A059]/80 font-mono">
+                          {dictInfo.strong_number}
                         </span>
                       )}
                     </div>
                   </div>
 
                   {/* Theological definition */}
-                  <div className="space-y-2">
-                    <h5 className="text-xs font-semibold uppercase tracking-wider text-[#94A3B8] font-sans flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#C5A059]" />
+                  <div className="space-y-1.5">
+                    <h5 className="text-[10px] font-semibold uppercase tracking-wider text-[#94A3B8] font-sans flex items-center gap-1">
+                      <span className="w-1 h-1 rounded-full bg-[#C5A059]" />
                       Definição Teológica
                     </h5>
-                    <p className="text-[#E2E8F0] text-sm leading-relaxed font-serif bg-[#08090B] p-4 rounded-xl border border-white/5">
+                    <p className="text-[#E2E8F0] text-xs leading-relaxed font-serif bg-[#08090B] p-3 rounded-xl border border-white/5">
                       {dictInfo.definition}
                     </p>
                   </div>
 
                   {/* Spiritual application */}
                   {dictInfo.application && (
-                    <div className="space-y-2">
-                      <h5 className="text-xs font-semibold uppercase tracking-wider text-[#94A3B8] font-sans flex items-center gap-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#C5A059]" />
-                        Aplicação Prática e Vida Cristã
+                    <div className="space-y-1.5">
+                      <h5 className="text-[10px] font-semibold uppercase tracking-wider text-[#94A3B8] font-sans flex items-center gap-1">
+                        <span className="w-1 h-1 rounded-full bg-[#C5A059]" />
+                        Aplicação Prática
                       </h5>
-                      <p className="text-[#92A3B8] text-sm leading-relaxed italic bg-[#C5A059]/5 p-4 rounded-xl border border-[#C5A059]/10">
+                      <p className="text-[#94A3B8] text-xs leading-relaxed italic bg-[#C5A059]/5 p-3 rounded-xl border border-[#C5A059]/10">
                         {dictInfo.application}
                       </p>
                     </div>
@@ -1078,12 +1392,12 @@ export default function Bible() {
             </div>
 
             {/* Footer */}
-            <div className="p-4 border-t border-white/5 bg-[#08090B] flex justify-end">
+            <div className="px-4 py-3 border-t border-white/5 bg-[#08090B] flex justify-end">
               <button 
                 onClick={() => setShowDictModal(false)}
-                className="px-6 py-2 rounded-xl font-medium bg-[#C5A059] text-[#0F1115] hover:bg-[#D4AF68] transition-colors text-sm font-sans"
+                className="px-4 py-1.5 rounded-xl font-medium bg-[#C5A059] text-[#0F1115] hover:bg-[#D4AF68] transition-colors text-xs font-sans"
               >
-                Fechar
+                Concluir
               </button>
             </div>
           </div>

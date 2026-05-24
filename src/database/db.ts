@@ -1,4 +1,6 @@
+import './polyfill';
 import Dexie, { type EntityTable } from 'dexie';
+import { useFakeIDB } from './polyfill';
 
 export interface BibleBook {
   id?: number;
@@ -69,8 +71,24 @@ export interface HighlightedVerse {
   created_at: string;
 }
 
+export interface Sermon {
+  id?: number;
+  title: string;
+  theme?: string;
+  text_reference?: string;
+  content: string;
+  created_at: string;
+  updated_at: string;
+}
+
 // Database declaration
-const db = new Dexie('HermesBible') as Dexie & {
+const dbOptions: any = {};
+if (typeof window !== 'undefined' && useFakeIDB) {
+  dbOptions.indexedDB = window.indexedDB;
+  dbOptions.IDBKeyRange = window.IDBKeyRange;
+}
+
+const db = new Dexie('HermesBible', dbOptions) as Dexie & {
   books: EntityTable<BibleBook, 'id'>;
   verses: EntityTable<BibleVerse, 'id'>;
   notes: EntityTable<Note, 'id'>;
@@ -80,6 +98,7 @@ const db = new Dexie('HermesBible') as Dexie & {
   read_verses: EntityTable<ReadVerse, 'id'>;
   reading_history: EntityTable<ReadingHistory, 'id'>;
   highlighted_verses: EntityTable<HighlightedVerse, 'id'>;
+  sermons: EntityTable<Sermon, 'id'>;
 };
 
 // Schema setup
@@ -152,6 +171,23 @@ db.version(7).stores({
   notes: '++id, title, created_at, updated_at, [book_name+chapter], [book_name+chapter+verse]',
   reading_history: '++id, [book_name+chapter], timestamp',
   highlighted_verses: '++id, [book_name+chapter], [book_name+chapter+verse]'
+});
+
+db.version(8).stores({
+  books: '++id, name, testament',
+  verses: '++id, book_name, [book_name+chapter], [book_name+chapter+verse]',
+  chats: '++id, title, created_at',
+  chat_messages: '++id, chat_id, role, created_at',
+  read_chapters: '++id, [book_name+chapter]',
+  read_verses: '++id, [book_name+chapter], [book_name+chapter+verse]',
+  notes: '++id, title, created_at, updated_at, [book_name+chapter], [book_name+chapter+verse]',
+  reading_history: '++id, [book_name+chapter], timestamp',
+  highlighted_verses: '++id, [book_name+chapter], [book_name+chapter+verse]',
+  sermons: '++id, title, text_reference, created_at, updated_at'
+});
+
+db.on('versionchange', () => {
+  db.close();
 });
 
 export { db };
