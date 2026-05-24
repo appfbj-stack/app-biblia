@@ -178,10 +178,10 @@ export function InstallPWA() {
       <button
         id="btn-install-pwa"
         onClick={triggerNativePrompt}
-        className="flex items-center gap-2 px-3 py-1.5 bg-[#C5A059]/10 hover:bg-[#C5A059]/20 border border-[#C5A059]/30 text-[#C5A059] rounded-full text-xs font-semibold transition-all shadow-lg shrink-0 cursor-pointer"
+        className="flex items-center gap-2 px-3 py-1.5 bg-[#C5A059]/10 hover:bg-[#C5A059]/20 border border-[#C5A059]/30 text-[#C5A059] rounded-full text-xs font-semibold transition-all shadow-lg shrink-0 cursor-pointer animate-pulse-subtle"
       >
-        <Download className="w-3.5 h-3.5" />
-        Instalar PWA
+        <Download className="w-3.5 h-3.5 text-[#C5A059]" />
+        {promptInstall ? "Instalar Hermes (Rápido)" : "Instalar PWA"}
       </button>
 
       {/* AUTOMATIC SYSTEM-DETECTED PROMPT OVERLAY */}
@@ -309,6 +309,46 @@ export function InstallPWA() {
             </div>
 
             <div className="space-y-4 text-xs text-[#94A3B8] pb-5 leading-relaxed bg-[#16191E]">
+              {/* WARNING FOR IFRAMES OR AUTOMATED PREVIEW BROWSERS */}
+              {(isIframe || (typeof window !== 'undefined' && !!window.navigator.webdriver)) && (
+                <div className="p-4 bg-amber-500/10 border border-amber-500/35 text-amber-200 rounded-xl space-y-2 mb-3 shadow-md">
+                  <p className="font-bold flex items-center gap-1.5 text-xs text-amber-300">
+                    <Info className="w-4 h-4 text-amber-400 shrink-0" />
+                    Modo Simulador de Testes (AI Studio / Claude)
+                  </p>
+                  <p className="text-[11px] leading-relaxed text-[#CBD5E1]">
+                    O navegador interno de testes e o simulador lateral **bloqueiam** a instalação direta do aplicativo por regras estritas do sandbox do Google.
+                  </p>
+                  <p className="text-[11px] leading-relaxed text-amber-200 font-medium font-semibold">
+                    Para instalar com 1 clique no seu celular ou computador:
+                  </p>
+                  <ol className="list-decimal pl-4 text-[11px] space-y-1 text-[#CBD5E1]">
+                    <li>Clique no botão dourado abaixo para copiar o link.</li>
+                    <li>Abra-o no aplicativo normal do seu celular (como o <strong>Google Chrome</strong> ou <strong>Safari</strong> do iPhone).</li>
+                    <li>Pronto! Lá você clica em <strong>"Instalar PWA"</strong> e ele será adicionado instantaneamente!</li>
+                  </ol>
+                  <div className="flex gap-2 pt-1.5">
+                    <button
+                      type="button"
+                      onClick={copyDirectLink}
+                      className="flex-1 py-2 px-3 bg-[#C5A059] hover:bg-[#D4AF68] text-black rounded-lg font-bold transition-all text-center text-xs flex items-center justify-center gap-1 cursor-pointer"
+                    >
+                      {copied ? <Check className="w-3.5 h-3.5 text-green-800" /> : <Copy className="w-3.5 h-3.5" />}
+                      {copied ? "Link Copiado!" : "Copiar Link Real"}
+                    </button>
+                    <a
+                      href={window.location.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 py-2 px-3 bg-white/5 hover:bg-white/10 text-white border border-white/10 rounded-lg font-bold transition-all text-center text-xs flex items-center justify-center gap-1 cursor-pointer"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      Abrir Nova Guia
+                    </a>
+                  </div>
+                </div>
+              )}
+
               {isInApp && (
                 <div className="p-3.5 bg-amber-500/10 border border-amber-500/20 text-amber-300 rounded-xl space-y-2 mb-2">
                   <p className="font-bold flex items-center gap-1.5 text-xs text-amber-200">
