@@ -93,6 +93,16 @@ export function InstallPWA() {
     };
   }, []);
 
+  const copyDirectLink = () => {
+    try {
+      navigator.clipboard.writeText(window.location.href);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch (e) {
+      console.error("Failed to copy link:", e);
+    }
+  };
+
   const triggerNativePrompt = () => {
     if (isIframe) {
       // Breakout of preview iframe for proper web browser capabilities
@@ -164,24 +174,47 @@ export function InstallPWA() {
                 Instalar no {detectedOS}
               </h4>
               <p className="text-xs text-[#94A3B8] leading-relaxed pr-2">
-                Instale o <strong>Hermes IA</strong> para acesso offline instantâneo, leitura fluida da Bíblia e criação ágil de sermões sem abas do navegador.
+                {isIframe ? (
+                  <span>Para conseguir instalar no celular, você precisa abrir o aplicativo original fora do simulador do estúdio de testes.</span>
+                ) : (
+                  <span>Instale o <strong>Hermes IA</strong> para acesso offline instantâneo, leitura fluida da Bíblia e criação ágil de sermões sem abas do navegador.</span>
+                )}
               </p>
             </div>
           </div>
 
           <div className="mt-4 flex gap-2 justify-end text-xs">
-            <button
-              onClick={dismissAutoPrompt}
-              className="px-3 py-1.5 text-[#94A3B8] hover:text-[#E2E8F0] font-medium transition-colors"
-            >
-              Depois
-            </button>
-            <button
-              onClick={triggerNativePrompt}
-              className="px-4 py-1.5 bg-[#C5A059] hover:bg-[#D4AF68] text-black font-bold rounded-lg transition-colors shadow"
-            >
-              Instalar Agora
-            </button>
+            {isIframe ? (
+              <>
+                <button
+                  onClick={copyDirectLink}
+                  className="px-3 py-1.5 text-white bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 font-bold transition-colors"
+                >
+                  {copied ? "Copiado!" : "Copiar Link"}
+                </button>
+                <button
+                  onClick={() => window.open(window.location.href, "_blank")}
+                  className="px-4 py-1.5 bg-[#C5A059] hover:bg-[#D4AF68] text-black font-bold rounded-lg transition-colors shadow"
+                >
+                  Abrir no Navegador
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={dismissAutoPrompt}
+                  className="px-3 py-1.5 text-[#94A3B8] hover:text-[#E2E8F0] font-medium transition-colors"
+                >
+                  Depois
+                </button>
+                <button
+                  onClick={triggerNativePrompt}
+                  className="px-4 py-1.5 bg-[#C5A059] hover:bg-[#D4AF68] text-black font-bold rounded-lg transition-colors shadow"
+                >
+                  Instalar Agora
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -214,7 +247,37 @@ export function InstallPWA() {
               </button>
             </div>
 
-            <div className="space-y-4 text-xs text-[#94A3B8] pb-5 leading-relaxed">
+            <div className="space-y-4 text-xs text-[#94A3B8] pb-5 leading-relaxed bg-[#16191E]">
+              {isIframe && (
+                <div className="p-3.5 bg-amber-500/10 border border-amber-500/20 text-amber-300 rounded-xl space-y-2 mb-2">
+                  <p className="font-bold flex items-center gap-1.5 text-xs text-amber-200">
+                    <Info className="w-4 h-4 shrink-0 text-amber-400" />
+                    Ambiente de Testes Detectado
+                  </p>
+                  <p className="text-[11px] leading-relaxed text-[#CBD5E1]">
+                    Instalações PWA requerem um contexto isolado de navegador seguro (HTTPS direto). 
+                    Copie o link abaixo para abrir no navegador do seu smartphone.
+                  </p>
+                  <div className="flex gap-2 pt-1.5">
+                    <button
+                      type="button"
+                      onClick={() => window.open(window.location.href, "_blank")}
+                      className="flex-1 py-2 px-3 bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-500/30 rounded-lg font-bold transition-all text-center text-xs cursor-pointer"
+                    >
+                      Abrir em Nova Aba
+                    </button>
+                    <button
+                      type="button"
+                      onClick={copyDirectLink}
+                      className="flex-1 py-2 px-3 bg-white/5 hover:bg-white/10 text-white border border-white/10 rounded-lg font-bold transition-all text-center text-xs flex items-center justify-center gap-1 cursor-pointer"
+                    >
+                      {copied ? <Check className="w-3 h-3 text-green-400" /> : null}
+                      {copied ? "Copiado!" : "Copiar Link"}
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {detectedOS === 'iOS' ? (
                 <>
                   <p>Siga estas etapas recomendadas no navegador <strong>Safari</strong> do iPhone ou iPad:</p>
@@ -279,7 +342,7 @@ export function InstallPWA() {
                 localStorage.setItem("pwa_prompt_dismissed", "true");
                 window.dispatchEvent(new CustomEvent("pwa_prompt_status_updated"));
               }}
-              className="w-full py-3.5 rounded-xl font-bold bg-[#C5A059] text-black hover:bg-[#D4AF68] transition-colors font-serif shadow-lg flex items-center justify-center gap-2"
+              className="w-full py-3.5 rounded-xl font-bold bg-[#C5A059] text-black hover:bg-[#D4AF68] transition-colors font-serif shadow-lg flex items-center justify-center gap-2 cursor-pointer"
             >
               <Check className="w-4 h-4" />
               Concluir Instruções

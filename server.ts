@@ -53,13 +53,29 @@ async function startServer() {
       const { icon192, icon512 } = req.body;
       const fs = await import("fs/promises");
       
+      const writeIcon = async (filename: string, base64Str: string) => {
+        const base64Data = base64Str.replace(/^data:image\/?[a-z]*;base64,/, "");
+        
+        // Write to public/
+        try {
+          await fs.writeFile(path.join(process.cwd(), "public", filename), base64Data, "base64");
+        } catch (e) {
+          console.error(`Failed to write to public/${filename}`, e);
+        }
+
+        // Also write to dist/ in case we are running in production from dist
+        try {
+          await fs.writeFile(path.join(process.cwd(), "dist", filename), base64Data, "base64");
+        } catch (e) {
+          // dist may not exist yet, ignore
+        }
+      };
+
       if (icon192) {
-        const base64Data = icon192.replace(/^data:image\/png;base64,/, "");
-        await fs.writeFile(path.join(process.cwd(), "public", "icon-192.png"), base64Data, "base64");
+        await writeIcon("icon-192.png", icon192);
       }
       if (icon512) {
-        const base64Data = icon512.replace(/^data:image\/png;base64,/, "");
-        await fs.writeFile(path.join(process.cwd(), "public", "icon-512.png"), base64Data, "base64");
+        await writeIcon("icon-512.png", icon512);
       }
       res.json({ success: true });
     } catch (e: any) {
@@ -536,6 +552,8 @@ Retorne estritamente o objeto JSON válido.`;
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), "dist");
+    const publicPath = path.join(process.cwd(), "public");
+    
     app.use(express.static(distPath, {
       setHeaders: (res, filePath) => {
         if (filePath.endsWith('.webmanifest')) {
@@ -547,6 +565,10 @@ Retorne estritamente o objeto JSON válido.`;
         }
       }
     }));
+    
+    // Fallback to public directory if not found in dist
+    app.use(express.static(publicPath));
+
     app.get("*", (req, res) => {
       res.sendFile(path.join(distPath, "index.html"));
     });
