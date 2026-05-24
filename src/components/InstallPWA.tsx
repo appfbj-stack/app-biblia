@@ -67,13 +67,30 @@ export function InstallPWA() {
     };
     setIsInApp(checkInApp());
 
+    // Instantly capture prompt if already intercepted by index.html script
+    const checkGlobalPrompt = () => {
+      const globalPrompt = (window as any).deferredPrompt;
+      if (globalPrompt) {
+        setSupportsPWA(true);
+        setPromptInstall(globalPrompt);
+      }
+    };
+
+    checkGlobalPrompt();
+
     const handler = (e: Event) => {
       e.preventDefault();
+      (window as any).deferredPrompt = e;
       setSupportsPWA(true);
       setPromptInstall(e);
     };
 
+    const customPromptHandler = () => {
+      checkGlobalPrompt();
+    };
+
     window.addEventListener("beforeinstallprompt", handler);
+    window.addEventListener("pwa-prompt-ready", customPromptHandler);
 
     // Automatic prompt trigger logic
     if (!alreadyStandalone) {
@@ -85,6 +102,7 @@ export function InstallPWA() {
         return () => {
           clearTimeout(timer);
           window.removeEventListener("beforeinstallprompt", handler);
+          window.removeEventListener("pwa-prompt-ready", customPromptHandler);
         };
       }
     }
@@ -98,6 +116,7 @@ export function InstallPWA() {
 
     return () => {
       window.removeEventListener("beforeinstallprompt", handler);
+      window.removeEventListener("pwa-prompt-ready", customPromptHandler);
       window.removeEventListener("open-pwa-install-guide", handleForceOpenGuide);
     };
   }, []);
