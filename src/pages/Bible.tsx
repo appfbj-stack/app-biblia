@@ -7,6 +7,10 @@ import { useAudio } from "../contexts/AudioContext";
 import { Play, Pause, Volume2, ChevronDown, CheckCircle2, Circle, StickyNote, X, Save, Settings2, Type, AlignLeft, Share2, Search, Loader2, Book, Languages, Highlighter, GitMerge, Link2 } from "lucide-react";
 import { cn } from "../lib/utils";
 
+// Capacitor plugins for native sharing
+import { Capacitor } from '@capacitor/core';
+import { Share } from '@capacitor/share';
+
 const highlightText = (text: string, search: string) => {
   if (!search.trim()) return <span>{text}</span>;
   
@@ -614,14 +618,19 @@ export default function Bible() {
 
   const shareVerse = async (verseText: string, verseNum: number) => {
     try {
-      const shareData = {
-        title: 'Hermes Bible',
-        text: `"${verseText}" - ${currentBook} ${currentChapter}:${verseNum}`,
-      };
-      if (navigator.share) {
-        await navigator.share(shareData);
+      const title = 'Hermes Bible';
+      const text = `"${verseText}" - ${currentBook} ${currentChapter}:${verseNum}`;
+      
+      if (Capacitor.isNativePlatform()) {
+        await Share.share({
+          title,
+          text,
+          dialogTitle: 'Compartilhar Versículo',
+        });
+      } else if (navigator.share) {
+        await navigator.share({ title, text });
       } else {
-        await navigator.clipboard.writeText(shareData.text);
+        await navigator.clipboard.writeText(text);
         alert('Versículo copiado para a área de transferência!');
       }
     } catch (err) {
@@ -633,11 +642,17 @@ export default function Bible() {
     try {
       const title = `${currentBook} ${currentChapter}`;
       const text = `Estou lendo ${title} no Hermes Bible.`;
-      const shareData = { title, text };
-      if (navigator.share) {
-        await navigator.share(shareData);
+      
+      if (Capacitor.isNativePlatform()) {
+        await Share.share({
+          title,
+          text,
+          dialogTitle: 'Compartilhar Capítulo',
+        });
+      } else if (navigator.share) {
+        await navigator.share({ title, text });
       } else {
-        await navigator.clipboard.writeText(shareData.text);
+        await navigator.clipboard.writeText(text);
         alert('Capítulo copiado para a área de transferência!');
       }
     } catch (err) {

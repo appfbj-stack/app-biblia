@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Hermes Bíblico</string>
+    <string name="title_activity_main">Hermes Bíblico</string>
+    <string name="package_name">com.hermesbiblico.app</string>
+    <string name="custom_url_scheme">com.hermesbiblico.app</string>
+</resources>

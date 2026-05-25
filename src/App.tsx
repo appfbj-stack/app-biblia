@@ -14,8 +14,40 @@ import { seedDatabase } from './database/seed';
 
 import { AudioProvider } from './contexts/AudioContext';
 
+// Import Capacitor for native mobile UX
+import { Capacitor } from '@capacitor/core';
+import { StatusBar, Style } from '@capacitor/status-bar';
+import { App as CapApp } from '@capacitor/app';
+import { SplashScreen } from '@capacitor/splash-screen';
+
 export default function App() {
   const [seedingState, setSeedingState] = useState({ loading: false, message: '', error: '' });
+
+  useEffect(() => {
+    // 1. Initialize Capacitor native enhancements if running inside Android/iOS
+    if (Capacitor.isNativePlatform()) {
+      // Style Status Bar to match elegant dark theme
+      StatusBar.setStyle({ style: Style.Dark }).catch(console.error);
+      StatusBar.setBackgroundColor({ color: '#08090B' }).catch(console.error);
+
+      // Handle Android back button navigation
+      const backListener = CapApp.addListener('backButton', () => {
+        // If web history can go back, navigate back
+        if (window.history.length > 1) {
+          window.history.back();
+        } else {
+          CapApp.exitApp();
+        }
+      });
+
+      // Hide Splash screen once React app starts up fully
+      SplashScreen.hide().catch(console.error);
+
+      return () => {
+        backListener.then(l => l.remove()).catch(console.error);
+      };
+    }
+  }, []);
 
   useEffect(() => {
     const handleSeedingStatus = (e: any) => {

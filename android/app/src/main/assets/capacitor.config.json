@@ -1,0 +1,15 @@
+{
+	"appId": "com.hermesbiblico.app",
+	"appName": "Hermes Bíblico",
+	"webDir": "dist",
+	"server": {
+		"url": "https://ais-pre-gk4dsrybjlndvx7fniceyh-218154775651.us-east1.run.app",
+		"cleartext": true,
+		"androidScheme": "https"
+	},
+	"android": {
+		"allowMixedContent": true,
+		"captureInput": true,
+		"backgroundColor": "#08090B"
+	}
+}
