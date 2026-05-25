@@ -410,15 +410,15 @@ export function InstallPWA() {
                   <ol className="space-y-2.5">
                     <li className="flex items-start gap-3 bg-[#1C2026] p-2.5 rounded-xl border border-white/5">
                       <span className="w-5 h-5 rounded-full bg-[#C5A059]/15 text-[#C5A059] flex items-center justify-center shrink-0 font-bold text-[10px]">1</span>
-                      <span className="pt-0.5 text-[#E2E8F0]">Com o site aberto no <strong>Chrome</strong>, clique e segure no botão dourado <strong>"Instalar PWA"</strong> disposto acima na barra de navegação!</span>
+                      <span className="pt-0.5 text-[#E2E8F0]">Certifique-se de que você está no <strong>Google Chrome</strong> (fora do WhatsApp, Instagram ou Facebook).</span>
                     </li>
                     <li className="flex items-start gap-3 bg-[#1C2026] p-2.5 rounded-xl border border-white/5">
                       <span className="w-5 h-5 rounded-full bg-[#C5A059]/15 text-[#C5A059] flex items-center justify-center shrink-0 font-bold text-[10px]">2</span>
-                      <span className="pt-0.5 text-[#E2E8F0]">Ou então, clique nos <strong>três pontinhos virtuais</strong> dispostos no cabeçalho superior direito do Chrome.</span>
+                      <span className="pt-0.5 text-[#E2E8F0]">Toque nos <strong>três pontinhos (⋮)</strong> localizados no canto superior direito do seu navegador Chrome.</span>
                     </li>
                     <li className="flex items-start gap-3 bg-[#1C2026] p-2.5 rounded-xl border border-white/5">
                       <span className="w-5 h-5 rounded-full bg-[#C5A059]/15 text-[#C5A059] flex items-center justify-center shrink-0 font-bold text-[10px]">3</span>
-                      <span className="pt-0.5 text-[#E2E8F0]">Selecione a guia de ação intitulada <strong>"Instalar aplicativo"</strong> ou <strong>"Adicionar à tela inicial"</strong> e pronto!</span>
+                      <span className="pt-0.5 text-[#E2E8F0]">Procure pela opção <strong>"Instalar aplicativo"</strong> (ou <strong>"Adicionar à tela inicial"</strong>) e selecione para concluir.</span>
                     </li>
                   </ol>
                 </>
