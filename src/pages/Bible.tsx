@@ -670,8 +670,10 @@ export default function Bible() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto py-8 px-4 animate-in fade-in duration-500 pb-24">
-      <div className="mb-8 w-full bg-[#1C2026] rounded-xl p-4 border border-white/5 flex items-center justify-between">
+    <div className="max-w-6xl mx-auto py-8 px-4 animate-in fade-in duration-500 pb-24 flex flex-col lg:flex-row lg:gap-8 lg:items-start justify-center">
+      {/* Coluna Principal de Leitura */}
+      <div className="flex-1 max-w-2xl w-full">
+        <div className="mb-8 w-full bg-[#1C2026] rounded-xl p-4 border border-white/5 flex items-center justify-between">
         <div className="flex flex-col">
           <span className="text-xs uppercase tracking-widest text-[#94A3B8] font-medium mb-1">Seu Progresso</span>
           <span className="text-sm text-[#E2E8F0] font-medium">{readChaptersCount} de {totalChapters} Capítulos Lidos</span>
@@ -754,6 +756,32 @@ export default function Bible() {
           >
             &rarr;
           </button>
+        </div>
+
+        {/* Quick Chapter Selector for Mobile (Horizontal Swipe) */}
+        <div className="lg:hidden mt-4 w-full flex flex-col items-center">
+          <div className="flex gap-1.5 overflow-x-auto w-full max-w-[325px] sm:max-w-md py-2 px-2 scrollbar-thin scrollbar-thumb-white/10 rounded-lg justify-start select-none">
+            {Array.from({ length: currentBookMaxChapters }, (_, i) => i + 1).map((chap) => {
+              const isSelected = chap === currentChapter;
+              return (
+                <button
+                  key={chap}
+                  onClick={() => {
+                    setCurrentChapter(chap);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className={cn(
+                    "px-3 py-1.5 text-xs font-semibold rounded-lg shrink-0 transition-all cursor-pointer min-w-[34px] flex items-center justify-center border",
+                    isSelected
+                      ? "bg-[#C5A059] border-[#C5A059] text-black shadow-lg font-bold"
+                      : "bg-[#1C2026] border-white/5 text-[#94A3B8] hover:text-[#E2E8F0] hover:bg-white/10"
+                  )}
+                >
+                  {chap}
+                </button>
+              );
+            })}
+          </div>
         </div>
         
         <div className="mt-6 flex flex-wrap justify-center items-center gap-3">
@@ -1150,6 +1178,41 @@ export default function Bible() {
             )}
           </div>
         )}
+      </div>
+
+      </div> {/* FECHAMENTO DA COLUNA PRINCIPAL DE LEITURA */}
+
+      {/* Lateral de Capítulos Rápida (Desktop) */}
+      <div className="hidden lg:block w-64 bg-[#1C2026] border border-white/5 rounded-2xl p-4 sticky top-6 self-start max-h-[82vh] overflow-y-auto select-none mt-[44px] scrollbar-thin scrollbar-thumb-white/10">
+        <div className="flex items-center gap-2 mb-3 border-b border-white/5 pb-2">
+          <Book className="w-4 h-4 text-[#C5A059]" />
+          <span className="text-xs uppercase tracking-wider text-[#94A3B8] font-bold">Capítulos de {currentBook}</span>
+        </div>
+        <div className="grid grid-cols-4 gap-2 font-mono">
+          {Array.from({ length: currentBookMaxChapters }, (_, i) => i + 1).map((chap) => {
+            const isSelected = chap === currentChapter;
+            return (
+              <button
+                key={chap}
+                onClick={() => {
+                  setCurrentChapter(chap);
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                className={cn(
+                  "aspect-square rounded-lg text-xs font-semibold flex items-center justify-center transition-all cursor-pointer border",
+                  isSelected
+                    ? "bg-[#C5A059] border-[#C5A059] text-[#0F1115] shadow-lg font-bold"
+                    : "bg-[#0F1115] border-white/5 text-[#94A3B8] hover:text-[#E2E8F0] hover:bg-white/10 hover:border-white/10"
+                )}
+              >
+                {chap}
+              </button>
+            );
+          })}
+        </div>
+        <div className="mt-4 pt-3 border-t border-white/5 text-[10px] text-center text-[#94A3B8]">
+          Clique no número para abrir.
+        </div>
       </div>
 
       {/* Note Editor Overlay */}
