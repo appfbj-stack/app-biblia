@@ -131,13 +131,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <header className="md:hidden flex items-center justify-between p-4 bg-[#16191E] border-b border-white/5 text-[#E2E8F0]">
           <h1 className="text-lg font-bold text-[#C5A059]">Hermes</h1>
           <div className="flex items-center gap-2">
-            {!isStandalone && showPwaBadge && (
+            {!isStandalone && (
               <button
                 onClick={() => window.dispatchEvent(new CustomEvent("open-pwa-install-guide"))}
-                className="relative px-3 py-1 bg-[#C5A059]/15 text-[#C5A059] hover:bg-[#C5A059]/25 border border-[#C5A059]/25 rounded-full text-[10px] font-bold animate-pulse flex items-center gap-1 cursor-pointer"
+                className="relative px-2.5 py-1 bg-[#C5A059]/15 text-[#C5A059] hover:bg-[#C5A059]/25 border border-[#C5A059]/25 rounded-full text-[10px] font-bold animate-pulse flex items-center gap-1 cursor-pointer"
               >
                 <Download className="w-3 h-3" />
-                <span>Instalar</span>
+                <span>Instalar App</span>
               </button>
             )}
             <InstallPWA />

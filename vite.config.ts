@@ -12,7 +12,7 @@ export default defineConfig(({mode}) => {
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
-        includeAssets: ['icon.svg'],
+        includeAssets: ['icon.svg', 'icon-192.png', 'icon-512.png'],
         devOptions: {
           enabled: true
         },
@@ -23,27 +23,34 @@ export default defineConfig(({mode}) => {
           theme_color: '#08090B',
           background_color: '#08090B',
           display: 'standalone',
+          start_url: '/',
+          scope: '/',
+          orientation: 'portrait',
+          lang: 'pt-BR',
           icons: [
             {
-              src: 'icon.svg',
+              src: '/icon.svg',
               sizes: '192x192',
-              type: 'image/svg+xml'
+              type: 'image/svg+xml',
+              purpose: 'any'
             },
             {
-              src: 'icon-192.png',
+              src: '/icon-192.png',
               sizes: '192x192',
-              type: 'image/png'
+              type: 'image/png',
+              purpose: 'any'
             },
             {
-              src: 'icon-512.png',
-              sizes: '512x512',
-              type: 'image/png'
-            },
-            {
-              src: 'icon-512.png',
+              src: '/icon-512.png',
               sizes: '512x512',
               type: 'image/png',
-              purpose: 'any maskable'
+              purpose: 'any'
+            },
+            {
+              src: '/icon-512.png',
+              sizes: '512x512',
+              type: 'image/png',
+              purpose: 'maskable'
             }
           ]
         }

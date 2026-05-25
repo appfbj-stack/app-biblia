@@ -18,6 +18,19 @@
         window.deferredPrompt = e;
         window.dispatchEvent(new CustomEvent('pwa-prompt-ready'));
       });
+
+      // Registro imediato e independente do Service Worker para garantir que o navegador ative a instalabilidade (PWA)
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js', { scope: '/' })
+            .then((registration) => {
+              console.log('Service Worker do Hermes registrado com sucesso sob o escopo:', registration.scope);
+            })
+            .catch((error) => {
+              console.error('Falha ao registrar o Service Worker do Hermes:', error);
+            });
+        });
+      }
     </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>

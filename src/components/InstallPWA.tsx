@@ -406,19 +406,22 @@ export function InstallPWA() {
                 </>
               ) : detectedOS === 'Android' ? (
                 <>
-                  <p>Siga estes passos rápidos na sua versão móvel do navegador <strong>Chrome</strong>:</p>
-                  <ol className="space-y-2.5">
+                  <p className="text-amber-300 font-semibold mb-2 bg-amber-500/10 p-3 rounded-lg border border-amber-500/30 text-[11px] leading-relaxed">
+                    ⚠️ <strong>ATENÇÃO IMPORTANTE</strong>: Dependendo da sua versão do celular, o Chrome muda o nome no menu. Se você **não encontrar** a palavra "Instalar", procure exatamente por <strong>"Adicionar à tela inicial"</strong> (ou <strong>"Adicionar à tela de início"</strong>). Elas criam o mesmo aplicativo idêntico com ícone na sua tela!
+                  </p>
+                  <p className="mt-2">Siga estes passos rápidos no navegador <strong>Google Chrome</strong>:</p>
+                  <ol className="space-y-2.5 mt-2">
                     <li className="flex items-start gap-3 bg-[#1C2026] p-2.5 rounded-xl border border-white/5">
                       <span className="w-5 h-5 rounded-full bg-[#C5A059]/15 text-[#C5A059] flex items-center justify-center shrink-0 font-bold text-[10px]">1</span>
-                      <span className="pt-0.5 text-[#E2E8F0]">Certifique-se de que você está no <strong>Google Chrome</strong> (fora do WhatsApp, Instagram ou Facebook).</span>
+                      <span className="pt-0.5 text-[#E2E8F0]">Abra o link no navegador real <strong>Google Chrome</strong> (evite abrir dentro do WhatsApp ou Instagram).</span>
                     </li>
                     <li className="flex items-start gap-3 bg-[#1C2026] p-2.5 rounded-xl border border-white/5">
                       <span className="w-5 h-5 rounded-full bg-[#C5A059]/15 text-[#C5A059] flex items-center justify-center shrink-0 font-bold text-[10px]">2</span>
-                      <span className="pt-0.5 text-[#E2E8F0]">Toque nos <strong>três pontinhos (⋮)</strong> localizados no canto superior direito do seu navegador Chrome.</span>
+                      <span className="pt-0.5 text-[#E2E8F0]">Toque nos <strong>três pontinhos (⋮)</strong> pretos localizados bem no canto superior direito do Chrome.</span>
                     </li>
                     <li className="flex items-start gap-3 bg-[#1C2026] p-2.5 rounded-xl border border-white/5">
                       <span className="w-5 h-5 rounded-full bg-[#C5A059]/15 text-[#C5A059] flex items-center justify-center shrink-0 font-bold text-[10px]">3</span>
-                      <span className="pt-0.5 text-[#E2E8F0]">Procure pela opção <strong>"Instalar aplicativo"</strong> (ou <strong>"Adicionar à tela inicial"</strong>) e selecione para concluir.</span>
+                      <span className="pt-0.5 text-[#E2E8F0]">Toque em <strong>"Adicionar à tela inicial"</strong> ou <strong>"Instalar aplicativo"</strong> para criar o aplicativo nativo!</span>
                     </li>
                   </ol>
                 </>
