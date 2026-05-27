@@ -87,7 +87,15 @@ Aja sempre com sabedoria, clareza, respeito e amor cristao. Nao invente versicul
 
 function getPath(req: any) {
   const raw = req.query?.path;
-  return Array.isArray(raw) ? raw.join('/') : String(raw || '');
+  if (Array.isArray(raw)) {
+    return raw.join('/');
+  }
+  if (raw) {
+    return String(raw);
+  }
+
+  const urlPath = String(req.url || '').split('?')[0];
+  return urlPath.replace(/^\/api\/?/, '').replace(/^\/+/, '');
 }
 
 export default async function handler(req: any, res: any) {
