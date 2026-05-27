@@ -78,7 +78,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         {!isStandalone && (
           <div className="relative group mt-auto pt-4 border-t border-white/5 w-full flex justify-center">
             <button
-              onClick={() => window.dispatchEvent(new CustomEvent("open-pwa-install-guide"))}
+              onClick={() => window.dispatchEvent(new CustomEvent("trigger-pwa-install"))}
               className={cn(
                 "w-11 h-11 rounded-xl flex items-center justify-center transition-all bg-[#C5A059]/15 hover:bg-[#C5A059]/25 border border-[#C5A059]/30 text-[#C5A059] relative cursor-pointer",
                 showPwaBadge && "animate-pulse border-[#C5A059]/60"
@@ -133,7 +133,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-2">
             {!isStandalone && (
               <button
-                onClick={() => window.dispatchEvent(new CustomEvent("open-pwa-install-guide"))}
+                onClick={() => window.dispatchEvent(new CustomEvent("trigger-pwa-install"))}
                 className="relative px-2.5 py-1 bg-[#C5A059]/15 text-[#C5A059] hover:bg-[#C5A059]/25 border border-[#C5A059]/25 rounded-full text-[10px] font-bold animate-pulse flex items-center gap-1 cursor-pointer"
               >
                 <Download className="w-3 h-3" />

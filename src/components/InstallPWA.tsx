@@ -92,34 +92,39 @@ export function InstallPWA() {
     window.addEventListener("beforeinstallprompt", handler);
     window.addEventListener("pwa-prompt-ready", customPromptHandler);
 
-    // Automatic prompt trigger logic
-    if (!alreadyStandalone) {
-      const dismissed = localStorage.getItem("pwa_prompt_dismissed") === "true";
-      if (!dismissed) {
-        const timer = setTimeout(() => {
-          setShowAutoBanner(true);
-        }, 2000);
-        return () => {
-          clearTimeout(timer);
-          window.removeEventListener("beforeinstallprompt", handler);
-          window.removeEventListener("pwa-prompt-ready", customPromptHandler);
-        };
-      }
-    }
-
     const handleForceOpenGuide = () => {
       setShowHelpPrompt(true);
       setShowAutoBanner(false);
     };
 
+    const handleForceInstall = () => {
+      triggerNativePrompt();
+    };
+
     window.addEventListener("open-pwa-install-guide", handleForceOpenGuide);
+    window.addEventListener("trigger-pwa-install", handleForceInstall);
+
+    // Automatic prompt trigger logic
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    if (!alreadyStandalone) {
+      const dismissed = localStorage.getItem("pwa_prompt_dismissed") === "true";
+      if (!dismissed) {
+        timer = setTimeout(() => {
+          setShowAutoBanner(true);
+        }, 2000);
+      }
+    }
 
     return () => {
+      if (timer) {
+        clearTimeout(timer);
+      }
       window.removeEventListener("beforeinstallprompt", handler);
       window.removeEventListener("pwa-prompt-ready", customPromptHandler);
       window.removeEventListener("open-pwa-install-guide", handleForceOpenGuide);
+      window.removeEventListener("trigger-pwa-install", handleForceInstall);
     };
-  }, []);
+  }, [promptInstall, isIframe, detectedOS, isInApp]);
 
   const copyDirectLink = () => {
     try {
@@ -151,10 +156,14 @@ export function InstallPWA() {
     if (promptInstall) {
       promptInstall.prompt();
       promptInstall.userChoice.then((choiceResult: { outcome: string }) => {
+        setPromptInstall(null);
+        (window as any).deferredPrompt = null;
         if (choiceResult.outcome === "accepted") {
           setIsStandalone(true);
           setShowAutoBanner(false);
           setShowHelpPrompt(false);
+        } else {
+          setShowHelpPrompt(true);
         }
       });
     } else {
