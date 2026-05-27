@@ -26,7 +26,7 @@ export function getOSName() {
   return 'Dispositivo';
 }
 
-export function InstallPWA() {
+export function InstallPWA({ showButton = true }: { showButton?: boolean }) {
   const [supportsPWA, setSupportsPWA] = useState(false);
   const [promptInstall, setPromptInstall] = useState<any>(null);
   const [isStandalone, setIsStandalone] = useState(false);
@@ -184,6 +184,7 @@ export function InstallPWA() {
 
   return (
     <>
+      {showButton && (
       <button
         id="btn-install-pwa"
         onClick={triggerNativePrompt}
@@ -192,6 +193,7 @@ export function InstallPWA() {
         <Download className="w-3.5 h-3.5 text-[#C5A059]" />
         {promptInstall ? "Instalar Hermes (Rápido)" : "Instalar PWA"}
       </button>
+      )}
 
       {/* AUTOMATIC SYSTEM-DETECTED PROMPT OVERLAY */}
       {showAutoBanner && (

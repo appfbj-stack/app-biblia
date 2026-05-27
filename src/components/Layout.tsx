@@ -46,6 +46,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-screen bg-[#0F1115] text-[#E2E8F0] font-sans overflow-hidden">
+      <InstallPWA showButton={false} />
       {/* Sidebar for Desktop */}
       <aside className="hidden md:flex flex-col w-[80px] bg-[#16191E] border-r border-[#E2E8F0]/5 items-center py-6 justify-between">
         <div className="flex flex-col items-center flex-1 w-full">
@@ -140,7 +141,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 <span>Instalar App</span>
               </button>
             )}
-            <InstallPWA />
           </div>
         </header>
 
