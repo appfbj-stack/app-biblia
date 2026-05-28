@@ -1,14 +1,18 @@
 {
+  "id": "/",
   "name": "Hermes Bible",
   "short_name": "Hermes",
-  "description": "A Bíblia digital com IA e áudio offline.",
+  "description": "A Biblia digital com IA e audio offline.",
   "start_url": "/",
   "scope": "/",
   "theme_color": "#08090B",
   "background_color": "#08090B",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
   "orientation": "portrait",
   "lang": "pt-BR",
+  "categories": ["books", "education", "productivity"],
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "/icon-192.png",
@@ -26,7 +30,7 @@
       "src": "/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "maskable"
     }
   ]
 }
